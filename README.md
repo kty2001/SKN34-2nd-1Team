@@ -1,5 +1,6 @@
 # 폴더 구조
 
+```text
 project_2nd/
 ├─ .streamlit/                 # Streamlit 설정
 │  └─ config.toml              # Streamlit 화면 및 앱 설정 (새로고침 없이 바로 적용)
@@ -80,3 +81,4 @@ project_2nd/
 ├─ app.py                      # Streamlit 메인 실행 파일
 ├─ README.md                   
 └─ requirements.txt            
+```
