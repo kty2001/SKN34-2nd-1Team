@@ -1,1 +1,1 @@
-from .data_loader import SEED, load_data
+from .common import SEED, load_data

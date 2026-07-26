@@ -1,7 +1,7 @@
 import streamlit as st
 import altair as alt
 import plotly.express as px
-from src.common import SEED, load_data
+from src.common.common import SEED, load_data
 
 # 데이터 불러오기
 df = load_data()
