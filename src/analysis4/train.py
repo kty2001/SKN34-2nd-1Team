@@ -1,5 +1,5 @@
 # 학습
-from src.common import load_data # 데이터 불러오기 모듈
+from src.common import SEED, load_data # 데이터 불러오기 모듈
 
 # 데이터 정제 및 분리 후
 # 해당 모듈에서 모델 저장 후 평가 및 고도화 시 모델 블러와서 사용 

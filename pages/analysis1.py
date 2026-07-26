@@ -1,5 +1,5 @@
 import streamlit as st
-from src.common import load_data # 데이터 불러오기 모듈
+from src.common import SEED, load_data # 데이터 불러오기 모듈
 from src.analysis1 import eda_test, evaluate_test # 예시 추후 수정
 
 # 내용 추후 수정
