@@ -190,4 +190,7 @@ pip-selfcheck.json
 # 추가
 *venv*/
 .venv/
+
+models/
+
 CLAUDE.md
