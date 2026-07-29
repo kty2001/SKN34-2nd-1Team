@@ -148,8 +148,8 @@ def compare_hierarchical(df=None, k=DEFAULT_K):
     }
 
 
-def pca_2d(df=None, labels=None):
-    """PCA 2차원 좌표 → 군집 분리도 시각화용 DataFrame"""
+def _pca_coords(df=None, labels=None, n_components=2):
+    """PCA 좌표 + 군집·등급·이탈 라벨 → DataFrame (2D/3D 공용)"""
     ft.set_seed()
     df = ft.load_data() if df is None else df
     if labels is None:
@@ -157,16 +157,46 @@ def pca_2d(df=None, labels=None):
 
     X = ft.get_cluster_X(df)
     Z = StandardScaler().fit_transform(X)
-    pca = PCA(n_components=2, random_state=SEED)
+    pca = PCA(n_components=n_components, random_state=SEED)
     coords = pca.fit_transform(Z)
 
     tiers, _ = label_tiers(df, labels)
-    out = pd.DataFrame(coords, columns=["PC1", "PC2"], index=df.index)
+    out = pd.DataFrame(coords, columns=[f"PC{i + 1}" for i in range(n_components)], index=df.index)
     out["군집"] = labels
     out["등급"] = tiers.values
     out["이탈"] = df[ft.TARGET].values
     out.attrs["설명분산비"] = pca.explained_variance_ratio_.round(4).tolist()
     return out
+
+
+def pca_2d(df=None, labels=None):
+    """PCA 2차원 좌표 → 군집 분리도 시각화용 DataFrame"""
+    return _pca_coords(df, labels, n_components=2)
+
+
+def pca_3d(df=None, labels=None):
+    """PCA 3차원 좌표 → 3D 산점도용 DataFrame
+
+    2D는 전체 분산의 35%가량만 설명하므로 축을 하나 더 본다.
+    다만 3D로 늘려도 절반을 넘지 않으므로 '잘 갈렸다'의 근거로는 여전히 약하다.
+    """
+    return _pca_coords(df, labels, n_components=3)
+
+
+def pca_loadings(df=None, n_components=3):
+    """각 주성분이 어느 변수로 만들어졌는지 → (로딩 DataFrame, 설명분산비 리스트)
+
+    산점도의 축이 무엇을 뜻하는지 설명하려면 좌표가 아니라 이 표가 필요하다.
+    """
+    ft.set_seed()
+    df = ft.load_data() if df is None else df
+    X = ft.get_cluster_X(df)
+    Z = StandardScaler().fit_transform(X)
+
+    pca = PCA(n_components=n_components, random_state=SEED).fit(Z)
+    loadings = pd.DataFrame(pca.components_.T, index=X.columns,
+                            columns=[f"PC{i + 1}" for i in range(n_components)]).round(3)
+    return loadings, pca.explained_variance_ratio_.round(4).tolist()
 
 
 def bundle_path(k=DEFAULT_K):

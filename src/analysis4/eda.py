@@ -17,6 +17,8 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import font_manager, rcParams
 from matplotlib.figure import Figure
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.tools.tools import add_constant
 
 from src.common import load_data
 from src.analysis4 import features as ft
@@ -264,14 +266,34 @@ def plot_churn_correlation(df=None):
     return fig
 
 
+def vif_table(df=None):
+    """설명변수별 VIF (분산팽창계수) → Series
+
+    상수항을 넣고 계산한다. 빼면 절편이 맡아야 할 평균이 각 변수에 흡수되어
+    겹치지 않는 변수까지 VIF가 부풀려진다(`Phone` 1.00 → 9.36).
+    """
+    df = load_data() if df is None else df
+    X = add_constant(df.drop(columns=[ft.TARGET]))
+    vif = [variance_inflation_factor(X.values, i) for i in range(1, X.shape[1])]
+    return pd.Series(vif, index=X.columns[1:]).round(2)
+
+
 def multicollinear_pairs(df=None, threshold=0.5):
-    """설명변수 간 |r| >= threshold 인 쌍"""
+    """설명변수 간 |r| >= threshold 인 쌍 — 상관계수와 각 변수의 VIF를 함께 낸다.
+
+    상관계수는 두 변수만 보고, VIF는 나머지 변수 전부를 함께 본다.
+    둘을 나란히 둬야 '이 쌍이 얼마나 겹치는가'를 두 각도에서 읽을 수 있다.
+    """
+    df = load_data() if df is None else df
     corr = correlation(df).drop(index=ft.TARGET, columns=ft.TARGET).abs()
+    vif = vif_table(df)
     rows = []
     for i, a in enumerate(corr.columns):
         for b in corr.columns[i + 1:]:
             if corr.loc[a, b] >= threshold:
-                rows.append({"변수1": a, "변수2": b, "상관계수": round(corr.loc[a, b], 3)})
+                rows.append({"변수1": a, "변수2": b,
+                             "상관계수": round(corr.loc[a, b], 3),
+                             "변수1 VIF": vif[a], "변수2 VIF": vif[b]})
     return pd.DataFrame(rows).sort_values("상관계수", ascending=False, ignore_index=True)
 
 
@@ -307,9 +329,15 @@ def plot_lifetime_rate(df=None):
     return fig
 
 
-def contract_group_cross(df=None):
-    """계약 기간 × 그룹수업 참여 교차 이탈률(%)"""
+def contract_group_cross(df=None, metric="rate"):
+    """계약 기간 × 그룹수업 참여 교차표 — metric='rate' 이탈률(%) / 'count' 인원
+
+    이탈률은 칸마다 분모(그 조합의 인원)가 다르다. 분모를 함께 보려면 'count'를 쓴다.
+    """
     df = load_data() if df is None else df
+    if metric == "count":
+        return df.pivot_table(index="Contract_period", columns="Group_visits",
+                              values=ft.TARGET, aggfunc="size")
     return (df.pivot_table(index="Contract_period", columns="Group_visits",
                            values=ft.TARGET, aggfunc="mean") * 100).round(1)
 
@@ -326,12 +354,18 @@ def plot_contract_group(df=None):
     return fig
 
 
-def age_lifetime_cross(df=None):
-    """연령대 × 유지기간 교차 이탈률 — 9.7절 (트랙 D 타깃팅 근거)"""
+def age_lifetime_cross(df=None, metric="rate"):
+    """연령대 × 유지기간 교차표 — 9.7절 (트랙 D 타깃팅 근거)
+
+    metric='rate' 이탈률(%) / 'count' 인원. contract_group_cross와 같은 규칙이다.
+    """
     df = load_data() if df is None else df
     lifetime = pd.cut(df[ft.TIMING_TARGET], [-0.1, 1.5, 3.5, 6.5, np.inf],
                       labels=["0~1개월", "2~3개월", "4~6개월", "7개월+"])
     age = pd.cut(df["Age"], [17, 27, 30, 45], labels=["~27세", "28~30세", "31세+"])
+    if metric == "count":
+        return df.pivot_table(index=lifetime, columns=age, values=ft.TARGET,
+                              aggfunc="size", observed=True)
     return (df.pivot_table(index=lifetime, columns=age, values=ft.TARGET,
                            aggfunc="mean", observed=True) * 100).round(1)
 

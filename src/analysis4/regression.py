@@ -61,6 +61,67 @@ MODEL_DIR = Path(__file__).resolve().parents[2] / "models" / "analysis4"
 TIMING_BINS = [-0.1, 0.5, 1.5, np.inf]
 TIMING_LABELS = ["0개월", "1개월", "2개월+"]
 
+# 접근별 대표 모델 — load_bundle()에서 name 생략 시 사용
+DEFAULT_MODEL = {"b1": "xgb", "b2": "cox", "b3": "xgb"}
+
+
+# ────────────────────────────────────────────────────────────────
+# 저장 · 로드
+# ────────────────────────────────────────────────────────────────
+def bundle_path(approach, scenario="S1", derived=True, name=None):
+    """저장 경로 — approach 는 'b1' / 'b2' / 'b3'
+
+    저장하는 쪽과 읽는 쪽이 같은 함수를 쓰게 해 파일명이 어긋나지 않도록 한다.
+    """
+    if approach not in DEFAULT_MODEL:
+        raise ValueError(f"approach는 {list(DEFAULT_MODEL)} 중 하나여야 합니다: {approach!r}")
+    name = name or DEFAULT_MODEL[approach]
+    dv = "derived" if derived else "raw"
+    return MODEL_DIR / f"reg_{approach}_{scenario}_{dv}_{name}.joblib"
+
+
+def load_bundle(approach="b2", scenario="S1", derived=True, name=None):
+    """저장한 트랙 B 모델 묶음 로드"""
+    path = bundle_path(approach, scenario, derived, name)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"모델이 없습니다: {path}\n"
+            "먼저 학습하세요: python -m src.analysis4.regression"
+        )
+    return joblib.load(path)
+
+
+def _align(bundle, X):
+    """저장된 피처 목록·순서로 입력을 다시 세운다.
+
+    순서가 어긋나도 예외 없이 조용히 틀린 값이 나오므로 예측 전에 반드시 거친다.
+    """
+    expected = bundle["features"]
+    missing = [c for c in expected if c not in X.columns]
+    if missing:
+        raise KeyError(f"입력에 없는 피처: {missing}")
+    return X[expected]
+
+
+def predict_class_proba(bundle, X):
+    """B-1 — 구간별 확률 (열 순서는 bundle['labels'])"""
+    return np.asarray(bundle["model"].predict_proba(_align(bundle, X)))
+
+
+def predict_months(bundle, X):
+    """B-3 — 예상 이탈 개월수"""
+    return np.asarray(bundle["model"].predict(_align(bundle, X)), dtype=float)
+
+
+def cox_risk(bundle, X):
+    """B-2 — Cox 선형예측자 = 상대 위험도
+
+    ⚠ 절대 시점이 아니다. 값 자체에는 단위가 없고 **다른 고객과의 순위 비교**로만 읽는다.
+      (베이스라인 위험함수를 저장하지 않으므로 개별 생존곡선은 복원하지 않는다.)
+    """
+    Z = bundle["scaler"].transform(_align(bundle, X))
+    return np.asarray(Z @ bundle["params"], dtype=float)
+
 
 # ────────────────────────────────────────────────────────────────
 # 데이터 구성
@@ -190,7 +251,7 @@ def train_ordinal(df=None, scenario="S1", derived=True, save=True):
                 "test": {k: row[k] for k in ("test_macro_f1", "test_accuracy")},
                 "seed": SEED, "n_train": int(len(X_tr)), "n_test": int(len(X_te)),
                 "trained_at": datetime.now().isoformat(timespec="seconds"),
-            }, MODEL_DIR / f"reg_b1_{scenario}_{'derived' if derived else 'raw'}_{name}.joblib")
+            }, bundle_path("b1", scenario, derived, name))
 
     return pd.DataFrame(rows).sort_values("test_macro_f1", ascending=False, ignore_index=True)
 
@@ -268,7 +329,7 @@ def survival_cox(df=None, scenario="S1", derived=True, save=True):
             "approach": "B-2", "scenario": scenario, "derived": derived,
             "model_name": "cox", "c_index": float(c_index), "seed": SEED,
             "trained_at": datetime.now().isoformat(timespec="seconds"),
-        }, MODEL_DIR / f"reg_b2_{scenario}_{'derived' if derived else 'raw'}_cox.joblib")
+        }, bundle_path("b2", scenario, derived))
 
     return {"coef": coef, "c_index": float(c_index),
             "n_total": int(len(X)), "n_event": int(event.sum()),
@@ -312,7 +373,7 @@ def train_regression(df=None, scenario="S1", derived=True, save=True):
                 "scenario": scenario, "derived": derived, "model_name": name,
                 "test": {"rmse": rmse}, "seed": SEED,
                 "trained_at": datetime.now().isoformat(timespec="seconds"),
-            }, MODEL_DIR / f"reg_b3_{scenario}_{'derived' if derived else 'raw'}_{name}.joblib")
+            }, bundle_path("b3", scenario, derived, name))
 
     out = pd.DataFrame(rows).sort_values("test_rmse", ignore_index=True)
     base = out.loc[out["모델"] == "baseline(평균)", "test_rmse"].iloc[0]
