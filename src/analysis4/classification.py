@@ -121,7 +121,7 @@ def compare_models(df=None, scenario="S1", derived=True, models=None, balanced=F
         rows.append(row)
 
     out = pd.DataFrame(rows).sort_values("roc_auc", ascending=False, ignore_index=True)
-    out.insert(0, "구성", f"{scenario}/{'derived' if derived else 'raw'}")
+    out.insert(0, "구성", ft.scenario_tag(scenario, derived))
     return out
 
 
@@ -372,7 +372,11 @@ def train_advanced(df=None, scenario="S1", derived=True, name=None, n_trials=30)
 
 
 def compare_stages(df=None, configs=None):
-    """고도화 전/후 비교표 — 탭 3의 핵심 산출물"""
+    """고도화 전/후 비교표 → (상세, 피벗)
+
+    저장된 모델이 없으면 (빈 DataFrame, None). 반환 형태를 항상 2개 튜플로 고정한다 —
+    호출부가 타입을 보고 분기하지 않아도 되게.
+    """
     configs = configs or [("S1", True), ("S2", False)]
     rows = []
     for scenario, derived in configs:
@@ -391,7 +395,7 @@ def compare_stages(df=None, configs=None):
             })
     out = pd.DataFrame(rows)
     if out.empty:
-        return out
+        return out, None
 
     pivot = out.pivot_table(index=["구성", "모델"], columns="단계",
                             values=["roc_auc", "f1", "recall"])

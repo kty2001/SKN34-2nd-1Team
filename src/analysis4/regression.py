@@ -233,7 +233,7 @@ def train_ordinal(df=None, scenario="S1", derived=True, save=True):
         model = factory().fit(X_tr, y_tr)
         pred = model.predict(X_te)
         row = {
-            "구성": f"{scenario}/{'derived' if derived else 'raw'}",
+            "구성": ft.scenario_tag(scenario, derived),
             "모델": name,
             "cv_macro_f1": cv_f1,
             "cv_accuracy": cv_acc,
@@ -307,15 +307,20 @@ def survival_cox(df=None, scenario="S1", derived=True, save=True):
     ft.set_seed()
     X, time, event = make_survival_data(df, scenario, derived)
 
-    # 계수 비교가 가능하도록 표준화 후 적합
-    scaler = StandardScaler()
-    Z = pd.DataFrame(scaler.fit_transform(X), columns=X.columns, index=X.index)
-
+    # 분할을 먼저 한다. 스케일러를 전체 데이터로 fit하면 test 행의 평균·표준편차가
+    # 표준화 기준에 섞여 C-index가 낙관적으로 나온다.
+    # (다른 트랙은 Pipeline이 이걸 막아주지만 PHReg는 sklearn 추정기가 아니라 직접 처리한다.)
     idx_tr, idx_te = train_test_split(X.index, test_size=0.25,
                                       stratify=event, random_state=SEED)
-    res = PHReg(time.loc[idx_tr], Z.loc[idx_tr], status=event.loc[idx_tr]).fit()
 
-    risk_te = Z.loc[idx_te].values @ res.params            # 선형예측자 = 위험도
+    # 계수 비교가 가능하도록 표준화 — 기준은 train만 보고 정하고 test는 변환만 한다.
+    scaler = StandardScaler().fit(X.loc[idx_tr])
+    Z_tr = pd.DataFrame(scaler.transform(X.loc[idx_tr]), columns=X.columns, index=idx_tr)
+    Z_te = pd.DataFrame(scaler.transform(X.loc[idx_te]), columns=X.columns, index=idx_te)
+
+    res = PHReg(time.loc[idx_tr], Z_tr, status=event.loc[idx_tr]).fit()
+
+    risk_te = Z_te.values @ res.params                     # 선형예측자 = 위험도
     c_index = concordance_index(time.loc[idx_te], risk_te, event.loc[idx_te])
 
     coef = (pd.DataFrame({"피처": X.columns, "계수": res.params, "p_value": res.pvalues})
@@ -328,12 +333,16 @@ def survival_cox(df=None, scenario="S1", derived=True, save=True):
             "params": res.params, "features": list(X.columns), "scaler": scaler,
             "approach": "B-2", "scenario": scenario, "derived": derived,
             "model_name": "cox", "c_index": float(c_index), "seed": SEED,
+            "n_train": int(len(idx_tr)), "n_test": int(len(idx_te)),
             "trained_at": datetime.now().isoformat(timespec="seconds"),
         }, bundle_path("b2", scenario, derived))
 
+    # n_train/n_test를 함께 낸다 — C-index는 전체가 아니라 test에서만 측정한 값이므로
+    # 화면·보고서가 4,000명에서 잰 것처럼 읽히지 않게 분모를 같이 넘긴다.
     return {"coef": coef, "c_index": float(c_index),
             "n_total": int(len(X)), "n_event": int(event.sum()),
-            "censored_rate": float(1 - event.mean())}
+            "censored_rate": float(1 - event.mean()),
+            "n_train": int(len(idx_tr)), "n_test": int(len(idx_te))}
 
 
 # ────────────────────────────────────────────────────────────────
@@ -361,7 +370,7 @@ def train_regression(df=None, scenario="S1", derived=True, save=True):
         pred = model.predict(X_te)
         rmse = float(np.sqrt(mean_squared_error(y_te, pred)))
         rows.append({
-            "구성": f"{scenario}/{'derived' if derived else 'raw'}",
+            "구성": ft.scenario_tag(scenario, derived),
             "모델": name,
             "test_rmse": rmse,
             "test_mae": float(mean_absolute_error(y_te, pred)),

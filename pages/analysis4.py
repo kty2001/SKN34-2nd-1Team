@@ -54,6 +54,10 @@ BASELINE_MEAN = "baseline(평균)"
 BASELINE_MEAN_LABEL = "Baseline(Mean Selection)"
 REG_MODEL_LABEL = {BASELINE_MEAN: BASELINE_MEAN_LABEL}
 
+# 화면 B-1의 대표 모델. 개요표의 결과 값과 샘플 예측이 같은 모델을 가리키도록 여기서 고정한다.
+# rg.load_bundle의 기본값은 xgb라, 생략하면 '최소제곱 회귀'라고 적힌 자리에 다른 모델 값이 들어간다.
+REG_OLS_MODEL = "linreg"
+
 # 예측 폼에서 받을 원본 변수 — 파생변수는 받지 않고 add_derived()로 계산한다.
 # 화면에서 직접 입력받으면 학습 때와 정의가 어긋날 수 있다.
 RAW_INPUT_COLS = list(ft.BASE_FEATURES)
@@ -174,12 +178,8 @@ def cached_clf_eval(df, scenario, derived, name):
 
 @st.cache_data(show_spinner=False)
 def cached_stage_compare(df):
-    """(상세, 피벗) 반환 — 고도화 모델이 없으면 (빈 DataFrame, None)
-
-    compare_stages는 결과가 없을 때만 튜플이 아닌 빈 DataFrame을 돌려주므로 여기서 형태를 맞춘다.
-    """
-    res = clf.compare_stages(df)
-    return res if isinstance(res, tuple) else (res, None)
+    """(상세, 피벗) 반환 — 고도화 모델이 없으면 (빈 DataFrame, None)"""
+    return clf.compare_stages(df)
 
 
 @st.cache_data(show_spinner="생존분석 적합 중…")
@@ -806,7 +806,12 @@ def render_classification(df, summary):
                 st.caption("혼동행렬 (임계값 0.5)")
                 st.altair_chart(confusion_chart(ev["confusion"]), width="stretch")
 
+        # evaluate()가 계산해 둔 F1 최적 임계값. 위 지표·혼동행렬은 0.5 기준이므로
+        # 임계값을 옮기면 어디까지 올라가는지 같이 밝혀야 0.5가 최적이 아니라는 게 보인다.
         thr = ev["threshold"]
+        st.caption(f"위 지표와 혼동행렬은 임계값 {thr['기본']:.2f} 기준. 이 모델의 F1 최적 임계값은 "
+                   f"{thr['F1 최적']:.3f}이며 그때 F1 {thr['F1 최적 점수']:.4f} — 고도화 단계에서는 "
+                   "이 값을 test가 아닌 train 교차검증(OOF)으로 다시 구해 적용")
 
         st.caption("순열 중요도 — 피처를 섞었을 때의 test AUC 감소량 (내림차순)")
         st.altair_chart(importance_chart(ev["importance"]), width="stretch")
@@ -846,7 +851,9 @@ def render_predict_regression(df):
     try:
         cox_bundle = rg.load_bundle("b2")
         # 화면의 B-1 = 모듈의 b3. 파일명은 모듈 태그를 따르므로 그대로 부른다.
-        ols_bundle = rg.load_bundle("b3")
+        # name은 반드시 넘긴다 — 생략하면 regression.DEFAULT_MODEL의 xgb가 로드되어
+        # 화면 라벨(최소제곱 회귀)·개요표(linreg)와 다른 모델의 예측값이 나온다.
+        ols_bundle = rg.load_bundle("b3", name=REG_OLS_MODEL)
     except FileNotFoundError as e:
         st.warning(str(e))
         return
@@ -869,10 +876,13 @@ def render_predict_regression(df):
 def regression_overview(cox, summary):
     """두 회귀를 한 표로 세운다 — 좌변에 무엇을 두느냐가 성패를 갈랐다는 게 이 탭의 요지다."""
     b1 = metric_table(summary, TRACK_B, REG_TAG["B-1"]) if summary is not None else None
-    if b1 is not None and "test_rmse" in b1.columns and BASELINE_MEAN in b1.index:
+    # 비-베이스라인 중 최솟값이 아니라 REG_OLS_MODEL의 값을 쓴다.
+    # 이 열의 제목이 '최소제곱 회귀'이므로 다른 모델(rf·xgb)의 숫자가 들어가면 라벨과 어긋난다.
+    if (b1 is not None and "test_rmse" in b1.columns
+            and {BASELINE_MEAN, REG_OLS_MODEL} <= set(b1.index)):
         base = float(b1.loc[BASELINE_MEAN, "test_rmse"])
-        best = float(b1.drop(index=BASELINE_MEAN)["test_rmse"].min())
-        result = f"RMSE {best:.4f} — {BASELINE_MEAN_LABEL} {base:.4f}도 못 이김"
+        ols = float(b1.loc[REG_OLS_MODEL, "test_rmse"])
+        result = f"RMSE {ols:.4f} — {BASELINE_MEAN_LABEL} {base:.4f}도 못 이김"
     else:
         result = "—"
 
@@ -895,7 +905,8 @@ def render_regression(df, summary):
     cox = cached_cox(df)
     st.dataframe(regression_overview(cox, summary), hide_index=True, width="stretch")
 
-    st.subheader("B-1 최소제곱 회귀 — 개월 수 직접 예측 (비교군)")
+    # 표에는 네 모델이 함께 오르므로 제목은 접근 이름으로 두고, 대표 모델은 아래 설명에서 밝힌다.
+    st.subheader("B-1 회귀 — 개월 수 직접 예측 (비교군)")
     if summary is None:
         st.info(NOT_TRAINED)
     else:
@@ -906,19 +917,26 @@ def render_regression(df, summary):
             # 인덱스 폭은 가장 긴 이름(Baseline(Mean Selection))에 맞춘다.
             show_metric_table(b1.rename(index=REG_MODEL_LABEL), "모델",
                               index_width=210, value_width=110)
-            st.markdown(f"`{BASELINE_MEAN_LABEL}`은 피처를 보지 않고 학습 평균만 답하는 기본 모델")
+            st.markdown(
+                f"`{BASELINE_MEAN_LABEL}`은 피처를 보지 않고 학습 평균만 답하는 기본 모델. "
+                f"대표 모델은 최소제곱 회귀(`{REG_OLS_MODEL}`)로, 위 개요표의 결과 값과 "
+                "아래 샘플 예측이 모두 이 모델")
 
     st.subheader("B-2 생존분석 — Cox 비례위험 회귀 (주력)")
     col1, col2, col3 = st.columns(3)
-    col1.metric("C-index", f"{cox['c_index']:.4f}", help="0.5 = 무작위, 1.0 = 완벽")
-    col2.metric("분석 대상", f"{cox['n_total']:,}명", help="유지자를 우측 절단으로 포함해 전원 사용")
+    col1.metric("C-index", f"{cox['c_index']:.4f}",
+                help=f"0.5 = 무작위, 1.0 = 완벽 · holdout test {cox['n_test']:,}명에서 측정")
+    col2.metric("분석 대상", f"{cox['n_total']:,}명",
+                help=f"유지자를 우측 절단으로 포함해 전원 사용 "
+                     f"(적합 {cox['n_train']:,}명 / 평가 {cox['n_test']:,}명)")
     col3.metric("절단(유지자) 비율", f"{cox['censored_rate'] * 100:.1f}%")
     st.markdown("B-1이 버린 유지자를 '아직 이탈하지 않음'으로 되살려 모든 데이터 행을 사용")
 
     st.caption("Kaplan-Meier 생존곡선 — 가입 후 개월별 잔존 확률")
     st.altair_chart(km_chart(cached_km(df)), width="stretch")
 
-    st.caption("Cox 계수 (표준화 후) — 양수면 이탈 위험 증가, 위험비는 exp(계수)")
+    st.caption("Cox 계수 (표준화 후) — 양수면 이탈 위험 증가, 위험비는 exp(계수). "
+               "표준화 기준(평균·표준편차)은 train만 보고 정하므로 test 정보가 C-index에 섞이지 않음")
     st.dataframe(cox["coef"].round(4), hide_index=True, width="stretch")
 
     st.subheader("B-1 실패 원인 분석")
