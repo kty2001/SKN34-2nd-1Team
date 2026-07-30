@@ -2,8 +2,8 @@
 
 탭 구성은 src/analysis4 모듈 구조를 그대로 따른다.
     EDA           eda.py
-    분류          classification.py  (트랙 A) — 고도화 전/후 + 샘플 예측
-    이탈 타이밍   regression.py      (트랙 B) — 회귀 두 가지 비교 + 샘플 예측
+    분류          classification.py  (트랙 A) — 고도화 전/후
+    이탈 타이밍   regression.py      (트랙 B) — 회귀 두 가지 비교
                                        모듈의 순서형 분류(B-1)는 학습 코드에만 두고 화면에서는 뺐다.
                                        그래서 화면 번호가 모듈 태그와 다르다 — REG_TAG 참고.
                                          화면 B-1 = 모듈 B-3 (최소제곱 회귀)
@@ -11,7 +11,12 @@
     군집화        clustering.py      (트랙 C) — 2D·3D 분포 + 리텐션 솔루션
 
 이 페이지는 학습하지 않는다. models/analysis4 의 저장 번들과 통합 요약(summary.joblib)을
-읽어 표시·예측만 한다. 학습은 `python -m src.analysis4.train`.
+읽어 표시만 한다. 학습은 `python -m src.analysis4.train`.
+
+샘플 입력 예측은 별도 예측 페이지로 옮기기로 해서 이 페이지에서는 주석 처리했다.
+분류(탭 2)·타이밍(탭 3)의 예측 블록과 그 전용 헬퍼(입력 폼·모집단 캐시)가 대상이며,
+지우지 않고 남긴 이유는 옮겨 갈 페이지에서 그대로 참고하기 위함이다.
+되살릴 때는 `# [예측 이전]` 표시가 붙은 블록을 함께 해제하면 된다.
 
 차트는 Altair(축 범위 제어) / Plotly(3D)로 그린다. 화면 폭에 맞춰 늘어나고 높이는
 CHART_H · TALL_H 두 값으로 통일한다. eda.py의 matplotlib Figure는 쓰지 않는다 —
@@ -58,9 +63,9 @@ REG_MODEL_LABEL = {BASELINE_MEAN: BASELINE_MEAN_LABEL}
 # rg.load_bundle의 기본값은 xgb라, 생략하면 '최소제곱 회귀'라고 적힌 자리에 다른 모델 값이 들어간다.
 REG_OLS_MODEL = "linreg"
 
-# 예측 폼에서 받을 원본 변수 — 파생변수는 받지 않고 add_derived()로 계산한다.
+# [예측 이전] 예측 폼에서 받을 원본 변수 — 파생변수는 받지 않고 add_derived()로 계산한다.
 # 화면에서 직접 입력받으면 학습 때와 정의가 어긋날 수 있다.
-RAW_INPUT_COLS = list(ft.BASE_FEATURES)
+# RAW_INPUT_COLS = list(ft.BASE_FEATURES)
 
 LABELS = {
     "Contract_period": "계약 기간(개월)",
@@ -198,11 +203,12 @@ def cached_signal(df):
     return rg.signal_check(df)
 
 
-@st.cache_data(show_spinner=False)
-def cached_cox_population(df):
-    """전체 고객의 Cox 위험도 분포 — 개인 위험도를 백분위로 옮길 때 쓴다."""
-    bundle = rg.load_bundle("b2")
-    return pd.Series(rg.cox_risk(bundle, ft.add_derived(df)))
+# [예측 이전] 개인 위험도를 백분위로 옮길 때만 쓰던 캐시 — 예측 블록과 함께 비활성.
+# @st.cache_data(show_spinner=False)
+# def cached_cox_population(df):
+#     """전체 고객의 Cox 위험도 분포 — 개인 위험도를 백분위로 옮길 때 쓴다."""
+#     bundle = rg.load_bundle("b2")
+#     return pd.Series(rg.cox_risk(bundle, ft.add_derived(df)))
 
 
 @st.cache_data(show_spinner="군집 프로파일 계산 중…")
@@ -553,76 +559,77 @@ def search_k_chart(ks, height=318):
     return (best + line).properties(height=height)
 
 
-# ── 예측 입력 폼 ──────────────────────────────────────────────────
-@st.cache_data(show_spinner=False)
-def input_specs(df):
-    """열별 입력 위젯 사양 — 범위·기본값을 데이터에서 뽑는다."""
-    spec = {}
-    for col in RAW_INPUT_COLS:
-        s = df[col]
-        values = sorted(s.dropna().unique().tolist())
-        spec[col] = {
-            "min": float(s.min()),
-            "max": float(s.max()),
-            "median": float(s.median()),
-            "choices": values if len(values) <= 6 else None,
-            "int": bool(pd.api.types.is_integer_dtype(s)),
-        }
-    return spec
-
-
-def _coerce(spec, value):
-    """세션에 넣을 값을 위젯이 받아들이는 타입으로 맞춘다."""
-    if spec["choices"] is not None:
-        return min(spec["choices"], key=lambda o: abs(o - float(value)))
-    return int(value) if spec["int"] else round(float(value), 2)
-
-
-def _widget(container, col, spec, key):
-    label = LABELS.get(col, col)
-    if spec["choices"] is not None:
-        if spec["choices"] == [0, 1]:
-            return container.selectbox(label, [0, 1], key=key,
-                                       format_func=lambda v: "예" if v == 1 else "아니오")
-        return container.selectbox(label, spec["choices"], key=key,
-                                   format_func=lambda v: f"{v:g}")
-    if spec["int"]:
-        return container.number_input(label, min_value=int(spec["min"]), max_value=int(spec["max"]),
-                                      step=1, key=key)
-    return container.number_input(label, min_value=float(spec["min"]), max_value=float(spec["max"]),
-                                  step=0.1, format="%.2f", key=key)
-
-
-def raw_input_form(df, prefix, exclude=(), n_cols=3):
-    """원본 변수 입력 폼 → 제출 후 1행 DataFrame, 아직이면 None
-
-    파생변수는 받지 않는다. 원본을 받아 features.add_derived()로 계산해야
-    학습할 때와 같은 정의가 보장된다.
-    """
-    specs = input_specs(df)
-    cols = [c for c in RAW_INPUT_COLS if c not in exclude]
-    for col in cols:
-        st.session_state.setdefault(f"{prefix}_{col}", _coerce(specs[col], specs[col]["median"]))
-
-    if st.button("데이터에서 무작위 고객 불러오기", key=f"{prefix}_sample"):
-        row = df.sample(1).iloc[0]
-        for col in cols:
-            st.session_state[f"{prefix}_{col}"] = _coerce(specs[col], row[col])
-        st.session_state[f"{prefix}_done"] = True
-        st.rerun()
-
-    with st.form(f"{prefix}_form"):
-        grid = st.columns(n_cols)
-        for i, col in enumerate(cols):
-            _widget(grid[i % n_cols], col, specs[col], f"{prefix}_{col}")
-        submitted = st.form_submit_button("예측 실행", type="primary")
-
-    if submitted:
-        st.session_state[f"{prefix}_done"] = True
-    if not st.session_state.get(f"{prefix}_done"):
-        return None
-    # 폼 위젯은 제출 시점에만 세션에 반영되므로, 세션 값 = 마지막으로 제출한 값이다.
-    return pd.DataFrame([{col: st.session_state[f"{prefix}_{col}"] for col in cols}])
+# ── [예측 이전] 예측 입력 폼 ───────────────────────────────────────
+# 예측 페이지로 옮기기로 해 비활성. 이 블록은 두 예측 블록에서만 쓰였다.
+# @st.cache_data(show_spinner=False)
+# def input_specs(df):
+#     """열별 입력 위젯 사양 — 범위·기본값을 데이터에서 뽑는다."""
+#     spec = {}
+#     for col in RAW_INPUT_COLS:
+#         s = df[col]
+#         values = sorted(s.dropna().unique().tolist())
+#         spec[col] = {
+#             "min": float(s.min()),
+#             "max": float(s.max()),
+#             "median": float(s.median()),
+#             "choices": values if len(values) <= 6 else None,
+#             "int": bool(pd.api.types.is_integer_dtype(s)),
+#         }
+#     return spec
+#
+#
+# def _coerce(spec, value):
+#     """세션에 넣을 값을 위젯이 받아들이는 타입으로 맞춘다."""
+#     if spec["choices"] is not None:
+#         return min(spec["choices"], key=lambda o: abs(o - float(value)))
+#     return int(value) if spec["int"] else round(float(value), 2)
+#
+#
+# def _widget(container, col, spec, key):
+#     label = LABELS.get(col, col)
+#     if spec["choices"] is not None:
+#         if spec["choices"] == [0, 1]:
+#             return container.selectbox(label, [0, 1], key=key,
+#                                        format_func=lambda v: "예" if v == 1 else "아니오")
+#         return container.selectbox(label, spec["choices"], key=key,
+#                                    format_func=lambda v: f"{v:g}")
+#     if spec["int"]:
+#         return container.number_input(label, min_value=int(spec["min"]), max_value=int(spec["max"]),
+#                                       step=1, key=key)
+#     return container.number_input(label, min_value=float(spec["min"]), max_value=float(spec["max"]),
+#                                   step=0.1, format="%.2f", key=key)
+#
+#
+# def raw_input_form(df, prefix, exclude=(), n_cols=3):
+#     """원본 변수 입력 폼 → 제출 후 1행 DataFrame, 아직이면 None
+#
+#     파생변수는 받지 않는다. 원본을 받아 features.add_derived()로 계산해야
+#     학습할 때와 같은 정의가 보장된다.
+#     """
+#     specs = input_specs(df)
+#     cols = [c for c in RAW_INPUT_COLS if c not in exclude]
+#     for col in cols:
+#         st.session_state.setdefault(f"{prefix}_{col}", _coerce(specs[col], specs[col]["median"]))
+#
+#     if st.button("데이터에서 무작위 고객 불러오기", key=f"{prefix}_sample"):
+#         row = df.sample(1).iloc[0]
+#         for col in cols:
+#             st.session_state[f"{prefix}_{col}"] = _coerce(specs[col], row[col])
+#         st.session_state[f"{prefix}_done"] = True
+#         st.rerun()
+#
+#     with st.form(f"{prefix}_form"):
+#         grid = st.columns(n_cols)
+#         for i, col in enumerate(cols):
+#             _widget(grid[i % n_cols], col, specs[col], f"{prefix}_{col}")
+#         submitted = st.form_submit_button("예측 실행", type="primary")
+#
+#     if submitted:
+#         st.session_state[f"{prefix}_done"] = True
+#     if not st.session_state.get(f"{prefix}_done"):
+#         return None
+#     # 폼 위젯은 제출 시점에만 세션에 반영되므로, 세션 값 = 마지막으로 제출한 값이다.
+#     return pd.DataFrame([{col: st.session_state[f"{prefix}_{col}"] for col in cols}])
 
 
 # ── 탭 1 · EDA ────────────────────────────────────────────────────
@@ -707,45 +714,46 @@ def render_eda(df):
 
 
 # ── 탭 2 · 분류 (트랙 A) ──────────────────────────────────────────
-def render_predict_classification(df, scenario, derived, name):
-    st.subheader("샘플 입력 예측")
-    st.markdown(f"위에서 고른 구성(**{ft.scenario_tag(scenario, derived)} · {name}**)의 저장 모델로 "
-                "고객 한 명의 이탈 확률을 계산. 파생변수는 입력값에서 자동 계산.")
-
-    raw = raw_input_form(df, "a4_clf")
-    if raw is None:
-        st.markdown("값을 채우고 **예측 실행** 누를 것.")
-        return
-
-    # 고도화 모델이 있으면 그쪽을 쓴다 (임계값까지 최적화된 버전).
-    try:
-        bundle, stage = clf.load_bundle(scenario, derived, name, tag="tuned"), ft.STAGE_TUNED
-    except FileNotFoundError:
-        try:
-            bundle, stage = clf.load_bundle(scenario, derived, name), ft.STAGE_BASE
-        except FileNotFoundError as e:
-            st.warning(str(e))
-            return
-
-    work = ft.add_derived(raw) if derived else raw
-    proba = float(clf.predict_proba(bundle, work)[0])
-    threshold = float(bundle.get("threshold", 0.5))
-
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("이탈 확률", f"{proba * 100:.1f}%")
-    col2.metric("판정", "이탈 위험" if proba >= threshold else "유지",
-                help=f"임계값 {threshold:.3f} 기준")
-    col3.metric("적용 임계값", f"{threshold:.3f}", help=f"{stage} 모델")
-    try:
-        tier = cl.predict_tier(cl.load_bundle(), raw).iloc[0]
-        col4.metric("군집 등급", tier, help="트랙 C 프로파일 기준")
-    except (FileNotFoundError, KeyError):
-        col4.metric("군집 등급", "—", help="군집 모델 없음")
-
-    st.progress(min(max(proba, 0.0), 1.0))
-    st.caption(f"사용 모델: {bundle['model_name']} · 단계 {stage} · 학습 {bundle['trained_at']}")
-    with st.expander("모델에 실제로 들어간 값 보기"):
-        st.dataframe(work[bundle["features"]], hide_index=True, width="stretch")
+# [예측 이전] 샘플 입력 예측 — 예측 페이지로 옮기기로 해 비활성.
+# def render_predict_classification(df, scenario, derived, name):
+#     st.subheader("샘플 입력 예측")
+#     st.markdown(f"위에서 고른 구성(**{ft.scenario_tag(scenario, derived)} · {name}**)의 저장 모델로 "
+#                 "고객 한 명의 이탈 확률을 계산. 파생변수는 입력값에서 자동 계산.")
+#
+#     raw = raw_input_form(df, "a4_clf")
+#     if raw is None:
+#         st.markdown("값을 채우고 **예측 실행** 누를 것.")
+#         return
+#
+#     # 고도화 모델이 있으면 그쪽을 쓴다 (임계값까지 최적화된 버전).
+#     try:
+#         bundle, stage = clf.load_bundle(scenario, derived, name, tag="tuned"), ft.STAGE_TUNED
+#     except FileNotFoundError:
+#         try:
+#             bundle, stage = clf.load_bundle(scenario, derived, name), ft.STAGE_BASE
+#         except FileNotFoundError as e:
+#             st.warning(str(e))
+#             return
+#
+#     work = ft.add_derived(raw) if derived else raw
+#     proba = float(clf.predict_proba(bundle, work)[0])
+#     threshold = float(bundle.get("threshold", 0.5))
+#
+#     col1, col2, col3, col4 = st.columns(4)
+#     col1.metric("이탈 확률", f"{proba * 100:.1f}%")
+#     col2.metric("판정", "이탈 위험" if proba >= threshold else "유지",
+#                 help=f"임계값 {threshold:.3f} 기준")
+#     col3.metric("적용 임계값", f"{threshold:.3f}", help=f"{stage} 모델")
+#     try:
+#         tier = cl.predict_tier(cl.load_bundle(), raw).iloc[0]
+#         col4.metric("군집 등급", tier, help="트랙 C 프로파일 기준")
+#     except (FileNotFoundError, KeyError):
+#         col4.metric("군집 등급", "—", help="군집 모델 없음")
+#
+#     st.progress(min(max(proba, 0.0), 1.0))
+#     st.caption(f"사용 모델: {bundle['model_name']} · 단계 {stage} · 학습 {bundle['trained_at']}")
+#     with st.expander("모델에 실제로 들어간 값 보기"):
+#         st.dataframe(work[bundle["features"]], hide_index=True, width="stretch")
 
 
 def render_classification(df, summary):
@@ -833,44 +841,44 @@ def render_classification(df, summary):
             st.dataframe(flat.reset_index(), hide_index=True, width="stretch")
         st.markdown("Optuna 하이퍼파라미터 탐색 + 임계값 최적화")
 
-    st.divider()
-    render_predict_classification(df, scenario, derived, name)
+    # [예측 이전] st.divider() + render_predict_classification(df, scenario, derived, name)
 
 
 # ── 탭 3 · 이탈 타이밍 (트랙 B) ───────────────────────────────────
-def render_predict_regression(df):
-    st.subheader("샘플 입력 예측")
-    st.markdown("두 접근을 함께 표시. `가입 후 경과 개월`은 트랙 B의 타깃이므로 입력받지 않음.")
-
-    raw = raw_input_form(df, "a4_reg", exclude=("Lifetime",))
-    if raw is None:
-        st.markdown("값을 채우고 **예측 실행** 누를 것.")
-        return
-
-    work = ft.add_derived(raw)
-    try:
-        cox_bundle = rg.load_bundle("b2")
-        # 화면의 B-1 = 모듈의 b3. 파일명은 모듈 태그를 따르므로 그대로 부른다.
-        # name은 반드시 넘긴다 — 생략하면 regression.DEFAULT_MODEL의 xgb가 로드되어
-        # 화면 라벨(최소제곱 회귀)·개요표(linreg)와 다른 모델의 예측값이 나온다.
-        ols_bundle = rg.load_bundle("b3", name=REG_OLS_MODEL)
-    except FileNotFoundError as e:
-        st.warning(str(e))
-        return
-
-    months = float(rg.predict_months(ols_bundle, work)[0])
-    risk = float(rg.cox_risk(cox_bundle, work)[0])
-    population = cached_cox_population(df)
-    percentile = float((population < risk).mean() * 100)
-
-    col1, col2 = st.columns(2)
-    col1.metric("Cox 위험도 순위 (B-2)", f"상위 {100 - percentile:.0f}%",
-                help=f"선형예측자 {risk:+.3f} · 전체 {len(population):,}명 중 백분위")
-    col2.metric("예상 개월수 (B-1)", f"{months:.2f}개월",
-                help=f"최소제곱 회귀 예측 — {BASELINE_MEAN_LABEL} 대비 개선이 없는 모델")
-
-    st.warning(f"**B-1 예측은 참고용.** 이 모델은 홀드아웃에서 {BASELINE_MEAN_LABEL}을 넘지 "
-               "못함. 신뢰할 수 있는 값은 B-2의 **상대 순위**뿐이며, 그마저 절대 시점이 아님.")
+# [예측 이전] 샘플 입력 예측 — 예측 페이지로 옮기기로 해 비활성.
+# def render_predict_regression(df):
+#     st.subheader("샘플 입력 예측")
+#     st.markdown("두 접근을 함께 표시. `가입 후 경과 개월`은 트랙 B의 타깃이므로 입력받지 않음.")
+#
+#     raw = raw_input_form(df, "a4_reg", exclude=("Lifetime",))
+#     if raw is None:
+#         st.markdown("값을 채우고 **예측 실행** 누를 것.")
+#         return
+#
+#     work = ft.add_derived(raw)
+#     try:
+#         cox_bundle = rg.load_bundle("b2")
+#         # 화면의 B-1 = 모듈의 b3. 파일명은 모듈 태그를 따르므로 그대로 부른다.
+#         # name은 반드시 넘긴다 — 생략하면 regression.DEFAULT_MODEL의 xgb가 로드되어
+#         # 화면 라벨(최소제곱 회귀)·개요표(linreg)와 다른 모델의 예측값이 나온다.
+#         ols_bundle = rg.load_bundle("b3", name=REG_OLS_MODEL)
+#     except FileNotFoundError as e:
+#         st.warning(str(e))
+#         return
+#
+#     months = float(rg.predict_months(ols_bundle, work)[0])
+#     risk = float(rg.cox_risk(cox_bundle, work)[0])
+#     population = cached_cox_population(df)
+#     percentile = float((population < risk).mean() * 100)
+#
+#     col1, col2 = st.columns(2)
+#     col1.metric("Cox 위험도 순위 (B-2)", f"상위 {100 - percentile:.0f}%",
+#                 help=f"선형예측자 {risk:+.3f} · 전체 {len(population):,}명 중 백분위")
+#     col2.metric("예상 개월수 (B-1)", f"{months:.2f}개월",
+#                 help=f"최소제곱 회귀 예측 — {BASELINE_MEAN_LABEL} 대비 개선이 없는 모델")
+#
+#     st.warning(f"**B-1 예측은 참고용.** 이 모델은 홀드아웃에서 {BASELINE_MEAN_LABEL}을 넘지 "
+#                "못함. 신뢰할 수 있는 값은 B-2의 **상대 순위**뿐이며, 그마저 절대 시점이 아님.")
 
 
 def regression_overview(cox, summary):
@@ -952,9 +960,8 @@ def render_regression(df, summary):
     corr = (sig["상관계수"].rename("개월 수와의 피어슨 상관계수")
             .rename_axis("피처").reset_index())
     st.dataframe(corr, hide_index=True, width="stretch")
-    
-    st.divider()
-    render_predict_regression(df)
+
+    # [예측 이전] st.divider() + render_predict_regression(df)
 
 
 # ── 탭 4 · 군집화 (트랙 C) ────────────────────────────────────────
