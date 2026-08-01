@@ -7,6 +7,9 @@ import seaborn as sns
 
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 
 # Train / Test 검증
 def validate_model(pipeline, X_train, X_test):
@@ -133,4 +136,45 @@ def plot_cluster_pca(pipeline, X, cluster):
     ax.set_title("PCA 군집 분포도")
     plt.tight_layout()
 
+    return fig
+
+# K 후보 검증
+def validate_k(X_train, k_range):
+    results = []
+
+    for n_cluster in k_range:
+        pipeline = Pipeline([
+            ("scaler", StandardScaler()),
+            ("kmeans", KMeans(n_clusters=n_cluster, random_state=SEED, n_init=10))
+        ])
+
+        pipeline.fit(X_train)
+
+        X_scaled = pipeline.named_steps["scaler"].transform(X_train)
+        labels = pipeline.named_steps["kmeans"].labels_
+
+        results.append({
+            "K": n_cluster,
+            "Inertia": pipeline.named_steps["kmeans"].inertia_,
+            "Silhouette": silhouette_score(X_scaled, labels)
+        })
+
+    return pd.DataFrame(results)
+
+
+# K 후보 검증 시각화
+def plot_k_validation(results):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+    axes[0].plot(results["K"], results["Inertia"], marker="o")
+    axes[0].set_title("Elbow Method")
+    axes[0].set_xlabel("K")
+    axes[0].set_ylabel("Inertia")
+
+    axes[1].plot(results["K"], results["Silhouette"], marker="o")
+    axes[1].set_title("Silhouette Score")
+    axes[1].set_xlabel("K")
+    axes[1].set_ylabel("Score")
+
+    plt.tight_layout()
     return fig

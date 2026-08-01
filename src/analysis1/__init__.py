@@ -5,7 +5,7 @@ from .eda import (
     get_duplicate_count,
     get_feature_name_mapping,
     plot_feature_distribution,
-    plot_correlation
+    plot_correlation,
 )
 
 from .train import (
@@ -21,12 +21,18 @@ from .evaluate import (
     plot_cluster_feature,
     evaluate_cluster_churn,
     plot_cluster_churn,
-    plot_cluster_pca
+    plot_cluster_pca,
+    validate_model,
+    plot_validation,
+    validate_k,
+    plot_k_validation,
 )
 
 from .advanced import (
     train_upgrade_model,
     evaluate_upgrade,
     compare_before_after,
-    plot_before_after
+    plot_before_after,
+    validate_k_upgrade,
+    plot_k_validation_upgrade
 )

@@ -24,7 +24,10 @@ from src.analysis1 import (
     evaluate_upgrade,
     compare_before_after,
     plot_before_after,
-    get_feature_name_mapping
+    validate_k,
+    plot_k_validation,
+    validate_k_upgrade,
+    plot_k_validation_upgrade
 )
 
 # 차트 기본 설정
@@ -116,7 +119,7 @@ if df is not None:
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y
         )
-
+        
         # 검증 진행
         validation_result = validate_model(pipeline, X_train, X_test)
 
@@ -126,6 +129,16 @@ if df is not None:
             st.metric("Train Silhouette", f"{validation_result['train_score']:.4f}")
         with col2:
             st.metric("Test Silhouette", f"{validation_result['test_score']:.4f}")
+            
+        # 최적 K 검증
+        k_results = validate_k(X_train, range(2, 11))
+
+        st.markdown("---")
+        st.subheader("최적 K 검증")
+        st.dataframe(k_results.style.format({"Inertia": "{:.2f}", "Silhouette": "{:.4f}"}), use_container_width=True)
+        st.pyplot(plot_k_validation(k_results))
+        st.markdown("### 📌 분석 요약")
+        st.write("$K=4$일 때 실루엣 점수가 0.2673으로 가장 높지만, $K=5$부터는 성능이 하락하므로 변수 재조정 후 4개 군집으로 분석하는 것이 가장 적절합니다.")
 
         # Train/Test Score 시각화
         st.markdown("---")
@@ -183,6 +196,15 @@ if df is not None:
             st.metric("기존 Test Score", f"{validation_result['test_score']:.4f}")
         with col2:
             st.metric("고도화 Test Score", f"{upgrade_result['test_score']:.4f}")
+            
+        k_results_upgrade = validate_k_upgrade(X_train, range(2, 11))
+
+        st.markdown("---")
+        st.subheader("고도화 최적 K 검증")
+        st.dataframe(k_results_upgrade.style.format({"Inertia": "{:.2f}", "Silhouette": "{:.4f}"}), use_container_width=True)
+        st.pyplot(plot_k_validation_upgrade(k_results_upgrade))
+        st.markdown("### 📌 분석 요약")
+        st.write("이전 결과보다 실루엣 점수가 향상되어 성능이 좋아졌으며, 최적의 군집 개수는 3개($K=3$, 점수 0.3077)입니다.")
 
         st.markdown("---")
         st.subheader("고도화 전 / 후 Silhouette Score")
