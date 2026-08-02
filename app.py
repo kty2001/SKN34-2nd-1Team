@@ -53,7 +53,7 @@ pages = {
 		),
 
 		st.Page(
-			"pages/sample_pred.py",
+			"pages/predict.py",
 			title="예측",
 			icon="🔮"
 		)

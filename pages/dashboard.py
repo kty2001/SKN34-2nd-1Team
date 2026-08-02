@@ -202,3 +202,51 @@ with col3:
         chart,
         use_container_width=True
     )
+    
+    st.divider()
+
+st.header("핵심 인사이트")
+
+# 주요 지표 계산
+top_contract = (
+    df["Contract_period"]
+    .value_counts()
+    .idxmax()
+)
+
+avg_lifetime = df["Lifetime"].mean()
+avg_age = df["Age"].mean()
+avg_frequency = df["Avg_class_frequency_current_month"].mean()
+
+contract_churn = (
+    df.groupby("Contract_period")["Churn"]
+    .mean()
+    .sort_values(ascending=False)
+)
+
+highest_churn_contract = contract_churn.index[0]
+highest_churn_rate = contract_churn.iloc[0] * 100
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.subheader("⚠️ 이탈 위험 계약")
+    st.metric(
+        "이탈률이 가장 높은 계약",
+        f"{highest_churn_contract}개월"
+    )
+    st.write(f"해당 계약의 이탈률은 **{highest_churn_rate:.1f}%**입니다.")
+
+with col2:
+    st.subheader("📋 주요 계약기간")
+    st.metric(
+        "가장 많은 고객이 선택",
+        f"{top_contract}개월"
+    )
+    st.write("해당 계약기간을 선택한 고객이 가장 많습니다.")
+
+with col3:
+    st.subheader("👥 평균 고객 특성")
+    st.write(f"평균 이용기간 **{avg_lifetime:.1f}개월**")
+    st.write(f"평균 나이 **{avg_age:.1f}세**")
+    st.write(f"평균 방문빈도 **{avg_frequency:.1f}회/월**")
