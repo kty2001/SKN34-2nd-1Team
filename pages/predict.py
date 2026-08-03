@@ -1,5 +1,7 @@
 import streamlit as st
+from src.common import load_data
 from src.analysis1.predict import predict_sample
+from src.analysis2.predict import render_prediction_page
 
 st.set_page_config(
     page_title="샘플 예측",
@@ -8,7 +10,7 @@ st.set_page_config(
 )
 
 st.title("🔮 고객 이탈 군집 샘플 예측")
-st.write("고객의 이용 특성을 입력하면 해당 고객이 어느 클러스터에 속하는지 예측합니다.")
+st.write("고객의 이용 특성을 입력하면 해당 고객의 분석 결과를 예측합니다.")
 
 tab1, tab2, tab3, tab4 = st.tabs(["분석1", "분석2", "분석3", "분석4"])
 
@@ -49,13 +51,22 @@ with tab1:
             st.info(f"해당 고객군: **{cluster_name[cluster]}**")
 
 with tab2:
-    st.subheader("📊 분석2")
-    st.info("분석2 예측 모델을 준비 중입니다.")
+    df = load_data()
+
+    if df is None:
+        st.warning("데이터를 불러올 수 없습니다.")
+    else:
+        render_prediction_page(df)
 
 with tab3:
     st.subheader("📊 분석3")
     st.info("분석3 예측 모델을 준비 중입니다.")
 
 with tab4:
-    st.subheader("📊 분석4")
-    st.info("분석4 예측 모델을 준비 중입니다.")
+    df = load_data()
+
+    if df is None:
+        st.warning("데이터를 불러올 수 없습니다.")
+    else:
+        from src.analysis4.predict import render_prediction_page as render_analysis4_prediction
+        render_analysis4_prediction(df)
