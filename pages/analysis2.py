@@ -1,6 +1,7 @@
 import streamlit as st
 from src.common import load_data  # 데이터 불러오기 모듈
 from src.analysis2 import eda_test, evaluate_test
+from src.analysis2.eda import get_key_features_by_churn, plot_correlation_heatmap
 from src.analysis2.evaluate import plot_confusion_matrix, plot_feature_importance, MODEL_NAMES
 
 st.set_page_config(page_title="분석2: 결정트리 & 랜덤포레스트", page_icon="🌳")
@@ -16,6 +17,12 @@ if df is not None:
     with tab1:
         st.subheader("EDA")
         st.dataframe(eda_test())
+
+        st.markdown("**이탈(1) vs 잔류(0) 그룹 평균 비교**")
+        st.dataframe(get_key_features_by_churn(df))
+
+        st.markdown("**피처 간 상관관계**")
+        st.pyplot(plot_correlation_heatmap(df))
 
     with tab2:
         st.subheader("학습/추론 평가 (고도화 전 기본 모델)")

@@ -12,10 +12,32 @@
 
 - 데이터: `gym_churn_us.csv`, 4,000명 회원, 14개 컬럼 (수치형 13개 + 타겟 `Churn`)
 - 결측치 없음, 모든 피처가 이미 숫자형(0/1 인코딩 포함)으로 별도 인코딩 불필요
-- 전체 이탈률: `[TODO: get_churn_rate() 실행 결과 기입]`
-- 이탈(1) 그룹 vs 잔류(0) 그룹 평균 비교 결과 (`get_key_features_by_churn()` 기준):
-  - `[TODO: 실행 후 상위 3~4개 피처와 방향성 기입 — 예상: Lifetime, Avg_class_frequency_current_month가 낮을수록 이탈 위험 높음]`
-- 상관관계 히트맵상 다중공선성 이슈: `[TODO: Avg_class_frequency_total vs current_month 상관계수 확인 후 기입]`
+- 전체 이탈률: **26.5%** (전체 4,000명 중 이탈 1,061명, 잔류 2,939명)
+
+- 이탈(1) vs 잔류(0) 그룹 평균 비교 결과 (차이가 큰 순):
+  | 피처 | 잔류(0) 평균 | 이탈(1) 평균 | 차이 |
+  |---|---|---|---|
+  | Avg_additional_charges_total | 158.45 | 115.08 | -43.36 |
+  | Contract_period | 5.75 | 1.73 | -4.02 |
+  | Lifetime | 4.71 | 0.99 | -3.72 |
+  | Month_to_end_contract | 5.28 | 1.66 | -3.62 |
+  | Age | 29.98 | 26.99 | -2.99 |
+
+  → 이탈 회원은 잔류 회원 대비 계약기간(Contract_period), 가입기간(Lifetime), 계약 종료까지 남은 개월(Month_to_end_contract)이 모두 뚜렷하게 짧고, 부가서비스 지출(Avg_additional_charges_total)도 낮음. 즉 **"짧은 계약 + 낮은 지출 + 낮은 참여"가 이탈의 전형적 패턴**으로 나타남
+
+- Churn과의 상관계수 (절댓값 기준 상위):
+  | 피처 | 상관계수 |
+  |---|---|
+  | Lifetime | -0.44 |
+  | Age | -0.40 |
+  | Contract_period | -0.39 |
+  | Month_to_end_contract | -0.38 |
+  | Avg_class_frequency_current_month | -0.41 |
+
+- **다중공선성 이슈**:
+  - `Contract_period`와 `Month_to_end_contract`의 상관계수가 **0.97**로 매우 높음 (계약기간이 길수록 남은 기간도 자연히 길어지는 구조적 관계)
+  - `Avg_class_frequency_total`과 `Avg_class_frequency_current_month`의 상관계수도 **0.95**로 매우 높음 (전체 평균 참여빈도와 최근 참여빈도가 함께 움직이는 지표)
+  - 두 쌍 모두 강한 다중공선성이 확인되나, 트리 기반 모델(결정트리/랜덤포레스트)은 다중공선성에 상대적으로 강건하여 별도 피처 제거는 진행하지 않음
 
 ## 3. 모델링 및 평가
 
