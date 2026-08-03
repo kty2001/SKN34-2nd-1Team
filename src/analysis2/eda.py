@@ -47,10 +47,14 @@ def plot_feature_by_churn(df: pd.DataFrame, feature: str):
 
 
 def plot_correlation_heatmap(df: pd.DataFrame):
+    # 이 함수를 쓴 이유: 피처간 상관관계 확인 (다중공선성 체크 + Churn과 상관 높은 피처 파악)
     fig, ax = plt.subplots(figsize=(10, 8))
     corr = df.corr(numeric_only=True)
     sns.heatmap(corr, annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
     ax.set_title("피처 간 상관관계")
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+    plt.setp(ax.get_yticklabels(), rotation=0)
+    fig.tight_layout()
     return fig
 
 
