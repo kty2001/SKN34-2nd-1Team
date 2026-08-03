@@ -14,6 +14,8 @@
 - 결측치 없음, 모든 피처가 이미 숫자형(0/1 인코딩 포함)으로 별도 인코딩 불필요
 - 전체 이탈률: **26.5%** (전체 4,000명 중 이탈 1,061명, 잔류 2,939명)
 
+![이탈 여부 분포](images/analysis2/01_churn_distribution.png)
+
 - 이탈(1) vs 잔류(0) 그룹 평균 비교 결과 (차이가 큰 순):
   | 피처 | 잔류(0) 평균 | 이탈(1) 평균 | 차이 |
   |---|---|---|---|
@@ -34,6 +36,8 @@
   | Month_to_end_contract | -0.38 |
   | Avg_class_frequency_current_month | -0.41 |
 
+![피처 간 상관관계](images/analysis2/02_correlation_heatmap.png)
+
 - **다중공선성 이슈**:
   - `Contract_period`와 `Month_to_end_contract`의 상관계수가 **0.97**로 매우 높음 (계약기간이 길수록 남은 기간도 자연히 길어지는 구조적 관계)
   - `Avg_class_frequency_total`과 `Avg_class_frequency_current_month`의 상관계수도 **0.95**로 매우 높음 (전체 평균 참여빈도와 최근 참여빈도가 함께 움직이는 지표)
@@ -51,12 +55,17 @@
 
 | 모델 | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---|---|---|---|---|
-| Decision Tree | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` |
-| Random Forest | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` |
+| Decision Tree | 0.9062 | 0.8341 | 0.8066 | 0.8201 | 0.8744 |
+| Random Forest | 0.9275 | 0.8850 | 0.8349 | 0.8592 | 0.9676 |
 
-> `python -m src.analysis2.train` 실행 후 `evaluate.py`의 `get_metrics_table(stage="base")` 결과를 그대로 표에 채우면 됩니다.
+### Confusion Matrix
 
-- Confusion Matrix 상 오분류 경향: `[TODO: 이탈자를 잔류로 잘못 예측한 비율(FN) 확인 후 기입]`
+![Decision Tree Confusion Matrix](images/analysis2/03_dt_confusion_base.png)
+![Random Forest Confusion Matrix](images/analysis2/04_rf_confusion_base.png)
+
+- Decision Tree: 실제 이탈자 212명 중 41명을 잔류로 잘못 예측 (FN 비율 약 19.3%)
+- Random Forest: 실제 이탈자 212명 중 35명을 잔류로 잘못 예측 (FN 비율 약 16.5%)
+- 두 모델 다 이탈자를 잔류로 잘못 예측하는 비율(FN)이 잔류자를 이탈로 잘못 예측하는 비율보다 낮아, 이탈 감지 성능 자체는 양호한 편. 다만 랜덤포레스트가 결정트리보다 FN이 더 적어 이탈자를 놓치지 않는 측면에서 우세함
 
 ## 4. 모델 고도화 및 비교
 
@@ -68,25 +77,33 @@
 ### 최적 하이퍼파라미터
 | 모델 | Best Params |
 |---|---|
-| Decision Tree | `[TODO: advanced.py 실행 결과 best_params 기입]` |
-| Random Forest | `[TODO]` |
+| Decision Tree | `max_depth=5, min_samples_leaf=1` |
+| Random Forest | `max_depth=10, max_features='sqrt', n_estimators=300` |
 
 ### 고도화 전/후 성능 비교
 
 | 모델 | 구분 | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---|---|---|---|---|---|
-| Decision Tree | 고도화 전 | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` |
-| Decision Tree | 고도화 후 | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` |
-| Random Forest | 고도화 전 | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` |
-| Random Forest | 고도화 후 | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` | `[TODO]` |
+| Decision Tree | 고도화 전 | 0.9062 | 0.8341 | 0.8066 | 0.8201 | 0.8744 |
+| Decision Tree | 고도화 후 | 0.9112 | 0.8439 | 0.8160 | 0.8297 | 0.9381 |
+| Random Forest | 고도화 전 | 0.9275 | 0.8850 | 0.8349 | 0.8592 | 0.9676 |
+| Random Forest | 고도화 후 | 0.9250 | 0.8878 | 0.8208 | 0.8529 | 0.9694 |
+
+- 결정트리는 튜닝 후 5개 지표 모두 개선됨 (특히 ROC-AUC가 0.8744 → 0.9381로 크게 상승)
+- 랜덤포레스트는 튜닝 후 ROC-AUC와 Precision은 소폭 상승했지만, Accuracy·Recall·F1은 근소하게 하락함 — 기본 모델이 이미 충분히 좋은 성능을 내고 있었음을 시사
 
 ### Feature Importance (고도화 후 모델 기준)
-- `[TODO: plot_feature_importance() 결과 상위 3~5개 피처 나열 및 해석]`
+
+![Decision Tree Feature Importance](images/analysis2/05_dt_importance_advanced.png)
+![Random Forest Feature Importance](images/analysis2/06_rf_importance_advanced.png)
+
+- 두 모델 모두 **`Lifetime`(가입기간)**이 가장 큰 영향을 미치는 피처로 나타남 (중요도 압도적 1위)
+- 다음으로 **`Avg_class_frequency_current_month`(최근 수업참여빈도)**, **`Age`(연령)** 순으로 중요도가 높음
+- 반면 `gender`, `Near_Location`, `Phone` 등 인구통계·접근성 관련 피처는 중요도가 낮게 나타나, 이탈 예측에는 인구통계보다 **실제 이용 행동 패턴**이 훨씬 중요하다는 인사이트를 얻음
 
 ## 5. 최종 결과 및 결론
 
-- 최종 채택 모델: `[TODO: Decision Tree vs Random Forest 중 Recall/F1 기준 우세한 쪽 선택]`
-- 선정 근거: `[TODO]`
-- 비즈니스 인사이트: 이탈 위험이 높은 회원의 특징을 요약하고, 이를 기반으로 한 리텐션 전략 제안
-  (예: 최근 수업 참여 빈도가 급감한 회원 대상 알림/할인 쿠폰 발송 등)
-- 한계 및 개선 방향: `[TODO: 데이터 크기, 클래스 불균형 정도, 추가로 시도해볼 수 있는 모델(XGBoost 등) 언급]`
+- **최종 채택 모델: Random Forest (advanced)**
+- 선정 근거: 고도화 전/후 모두 Accuracy(0.925~0.9275), Recall(0.82~0.8349), F1(0.8529~0.8592), ROC-AUC(0.9676~0.9694) 전 지표에서 결정트리보다 일관되게 우수함. 특히 Recall이 높아 이탈 위험 회원을 놓치지 않는 비즈니스 목적에 더 부합함
+- 비즈니스 인사이트: 가입기간(Lifetime)이 짧고 최근 수업 참여빈도(Avg_class_frequency_current_month)가 낮은 회원일수록 이탈 위험이 높음. 이 두 지표를 기준으로 이탈 위험군을 조기에 선별하여, 가입 초반 회원 대상 온보딩 강화 및 수업 참여 빈도가 급감한 회원 대상 알림·할인 쿠폰 발송 등의 리텐션 전략을 제안할 수 있음
+- 한계 및 개선 방향: 전체 데이터가 4,000건으로 규모가 크지 않고, 이탈률(26.5%)이 다소 불균형하여 향후 SMOTE 등 오버샘플링 기법 적용을 고려해볼 수 있음. 또한 XGBoost, 딥러닝 MLP 등 다른 모델과의 비교를 통해 추가적인 성능 개선 여지를 확인할 필요가 있음
