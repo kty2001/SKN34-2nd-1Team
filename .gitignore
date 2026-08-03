@@ -191,6 +191,4 @@ pip-selfcheck.json
 *venv*/
 .venv/
 
-models/
-
 CLAUDE.md
