@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# 학습
-from src.common import SEED, load_data # 데이터 불러오기 모듈
-=======
 """
 src/analysis2/train.py
 분석2 (결정트리 / 랜덤포레스트) - 모델 학습 및 저장
@@ -52,7 +48,6 @@ def save_models(models, X_test, y_test):
         joblib.dump(model, os.path.join(MODEL_DIR, f"{name}_base.pkl"))
     joblib.dump((X_test, y_test), os.path.join(MODEL_DIR, "test_data.pkl"))
 
->>>>>>> main
 
 def test4():
     """

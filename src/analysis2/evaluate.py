@@ -1,11 +1,6 @@
-<<<<<<< HEAD
-# 평가
-from src.common import SEED, load_data # 데이터 불러오기 모듈
-=======
 """
 src/analysis2/evaluate.py
 분석2 (결정트리 / 랜덤포레스트) - 모델 평가
->>>>>>> main
 
 train.py에서 저장한 모델(models/analysis2/*_base.pkl)과 테스트셋(test_data.pkl)을
 불러와서 Accuracy/Precision/Recall/F1/ROC-AUC 계산 + Confusion Matrix 시각화.
@@ -27,28 +22,24 @@ from sklearn.metrics import (
     roc_auc_score,
     confusion_matrix,
 )
-plt.rcParams["font.family"] = "Malgun Gothic"  # Windows 한글 폰트
-plt.rcParams["axes.unicode_minus"] = False      # 마이너스 기호 깨짐 방지
+
+plt.rcParams["font.family"] = "Malgun Gothic"
+plt.rcParams["axes.unicode_minus"] = False
 
 MODEL_DIR = "models/analysis2"
 MODEL_NAMES = ["decision_tree", "random_forest"]
 
 
 def load_test_data():
-    # 이 함수를 쓴 이유: train.py에서 저장해둔 테스트셋을 그대로 불러와서
-    # 평가할 때마다 다시 분할할 필요 없이 동일한 기준으로 비교하기 위해
     return joblib.load(os.path.join(MODEL_DIR, "test_data.pkl"))
 
 
 def load_model(name: str, stage: str = "base"):
-    # 이 함수를 쓴 이유: stage(base/advanced)에 맞는 저장된 모델 파일을 불러오기 위해
     path = os.path.join(MODEL_DIR, f"{name}_{stage}.pkl")
     return joblib.load(path)
 
 
 def get_metrics(model, X_test, y_test) -> dict:
-    # 이 함수를 쓴 이유: 이탈 예측은 Recall(이탈자를 놓치지 않는 정도)이 특히 중요해서
-    # 5개 지표를 한번에 계산해서 비교
     y_pred = model.predict(X_test)
     y_proba = model.predict_proba(X_test)[:, 1]
     return {
@@ -61,7 +52,6 @@ def get_metrics(model, X_test, y_test) -> dict:
 
 
 def get_metrics_table(stage: str = "base") -> pd.DataFrame:
-    # 이 함수를 쓴 이유: 결정트리 vs 랜덤포레스트 성능을 표 하나로 한눈에 비교하기 위해
     X_test, y_test = load_test_data()
     rows = {}
     for name in MODEL_NAMES:
@@ -71,8 +61,6 @@ def get_metrics_table(stage: str = "base") -> pd.DataFrame:
 
 
 def plot_confusion_matrix(name: str, stage: str = "base"):
-    # 이 함수를 쓴 이유: 어떤 유형의 오분류(이탈자를 놓침 vs 잔류자를 이탈로 잘못 예측)가
-    # 더 많은지 시각적으로 확인하기 위해
     X_test, y_test = load_test_data()
     model = load_model(name, stage=stage)
     y_pred = model.predict(X_test)
@@ -94,7 +82,6 @@ def plot_confusion_matrix(name: str, stage: str = "base"):
 
 
 def plot_feature_importance(name: str, stage: str = "base", top_n: int = 10):
-    # 이 함수를 쓴 이유: 이탈에 가장 큰 영향을 주는 피처가 뭔지 비즈니스 인사이트로 뽑기 위해
     X_test, _ = load_test_data()
     model = load_model(name, stage=stage)
 
@@ -112,11 +99,6 @@ def plot_feature_importance(name: str, stage: str = "base", top_n: int = 10):
 
 
 def test3(stage: str = "base"):
-    """
-    __init__.py 에서 `from .evaluate import test3 as evaluate_test` 로 불러오는 함수.
-    pages/analysis2.py 의 tab2(학습/추론 평가), tab3(고도화 전/후 평가)에서 호출됨.
-    tab2 -> evaluate_test() (stage="base"), tab3 -> evaluate_test(stage="advanced")
-    """
     return get_metrics_table(stage=stage)
 
 
