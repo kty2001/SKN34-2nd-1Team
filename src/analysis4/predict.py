@@ -280,13 +280,6 @@ def predict_regression(df, prefix="a4_reg"):
         help=f"최소제곱 회귀 예측 — {BASELINE_MEAN_LABEL} 대비 개선이 없는 모델",
     )
 
-    st.warning(
-        f"**B-1 예측은 참고용입니다.** "
-        f"이 모델은 홀드아웃에서 {BASELINE_MEAN_LABEL}을 넘지 못했습니다. "
-        "상대적으로 신뢰할 수 있는 값은 B-2의 상대 순위입니다."
-    )
-
-
 def render_prediction_page(df):
     """분석 4 예측 전용 페이지."""
     st.title("분석 4 — 샘플 고객 예측")
