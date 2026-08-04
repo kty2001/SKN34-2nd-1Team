@@ -1,0 +1,125 @@
+{
+  "feature_names": [
+    "gender",
+    "Near_Location",
+    "Partner",
+    "Promo_friends",
+    "Phone",
+    "Contract_period",
+    "Group_visits",
+    "Age",
+    "Avg_additional_charges_total",
+    "Month_to_end_contract",
+    "Lifetime",
+    "Avg_class_frequency_total",
+    "Avg_class_frequency_current_month"
+  ],
+  "best_threshold": 0.5300212502479553,
+  "test_scores": {
+    "accuracy": 0.945,
+    "precision": 0.9117647058823529,
+    "recall": 0.8773584905660378,
+    "f1": 0.8942307692307693,
+    "roc_auc": 0.9804261327172379
+  },
+  "feature_importance": {
+    "Contract_period": 0.3231000006198883,
+    "Lifetime": 0.2502000033855438,
+    "Month_to_end_contract": 0.1388999968767166,
+    "Age": 0.08829999715089798,
+    "Avg_class_frequency_current_month": 0.05480000004172325,
+    "Avg_class_frequency_total": 0.04670000076293945,
+    "Group_visits": 0.042399998754262924,
+    "Avg_additional_charges_total": 0.022299999371170998,
+    "Promo_friends": 0.014800000004470348,
+    "gender": 0.007000000216066837,
+    "Near_Location": 0.006000000052154064,
+    "Partner": 0.00559999980032444,
+    "Phone": 0.0
+  },
+  "feature_stats": {
+    "gender": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.51025
+    },
+    "Near_Location": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.84525
+    },
+    "Partner": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.48675
+    },
+    "Promo_friends": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.3085
+    },
+    "Phone": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.9035
+    },
+    "Contract_period": {
+      "min": 1.0,
+      "max": 12.0,
+      "mean": 4.68125
+    },
+    "Group_visits": {
+      "min": 0.0,
+      "max": 1.0,
+      "mean": 0.41225
+    },
+    "Age": {
+      "min": 18.0,
+      "max": 41.0,
+      "mean": 29.18425
+    },
+    "Avg_additional_charges_total": {
+      "min": 0.1482047884566242,
+      "max": 552.5907403868798,
+      "mean": 146.94372780925002
+    },
+    "Month_to_end_contract": {
+      "min": 1.0,
+      "max": 12.0,
+      "mean": 4.32275
+    },
+    "Lifetime": {
+      "min": 0.0,
+      "max": 31.0,
+      "mean": 3.72475
+    },
+    "Avg_class_frequency_total": {
+      "min": 0.0,
+      "max": 6.02366847599591,
+      "mean": 1.8790197125349366
+    },
+    "Avg_class_frequency_current_month": {
+      "min": 0.0,
+      "max": 6.146782880452392,
+      "mean": 1.7670518220405076
+    }
+  },
+  "actionable_features": [
+    "Contract_period",
+    "Month_to_end_contract",
+    "Lifetime",
+    "Avg_class_frequency_total",
+    "Avg_class_frequency_current_month",
+    "Group_visits"
+  ],
+  "low_churn_cluster": 1,
+  "low_churn_rate": 0.030562347188264057,
+  "cluster_targets": {
+    "Contract_period": 10.8117,
+    "Month_to_end_contract": 9.9364,
+    "Lifetime": 4.7372,
+    "Avg_class_frequency_total": 1.9522,
+    "Avg_class_frequency_current_month": 1.9425,
+    "Group_visits": 0.5587
+  }
+}
