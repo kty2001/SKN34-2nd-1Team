@@ -6,9 +6,9 @@ from src.analysis2 import (
     plot_confusion_matrix, plot_feature_importance, MODEL_NAMES,
 )
 
-st.set_page_config(page_title="가입 기간과 수업 참여도로 예측하는 회원 이탈 위험도 분석", page_icon="🌳")
-st.title("🌳 가입 기간과 수업 참여도로 예측하는 회원 이탈 위험도 분석")
-st.write("헬스장 회원의 가입기간, 수업 참여빈도, 계약기간 등을 기반으로 결정트리와 랜덤포레스트 모델을 통해 이탈 여부를 예측하고, 이탈에 영향을 미치는 핵심 요인을 분석합니다.")
+st.set_page_config(page_title="회원 이탈 예측", page_icon="🌳")
+st.title("🌳 회원 이탈 예측")
+st.write("가입기간·수업 참여빈도 기반 트리 모델(결정트리, 랜덤포레스트)로 이탈 여부를 예측합니다.")
 
 # 데이터 불러오기
 df = load_data()
