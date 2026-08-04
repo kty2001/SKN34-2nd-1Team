@@ -1,9 +1,5 @@
 # 고도화
-<<<<<<< HEAD
-from src.common import load_data # 데이터 불러오기 모듈
-=======
 from src.common import SEED, load_data # 데이터 불러오기 모듈
->>>>>>> upstream/develop
 
 # 저장 한 모델을 불러와서 고도화 후 최종적으로 모델 저장
 # 저장 경로 models\analysis3

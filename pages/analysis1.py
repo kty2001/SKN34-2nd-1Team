@@ -43,10 +43,7 @@ st.set_page_config(
 
 # 제목
 st.title("📊 고객 이용 특성과 계약 기간에 따른 이탈률 분석")
-st.write(
-    "고객의 이용기간, 나이, 최근 방문 빈도, 계약기간을 기반으로 "
-    "고객군을 분류하고 군집별 이탈률을 분석합니다."
-)
+st.write('EDA와 상관관계 분석을 바탕으로 이탈과 관련성이 높은 **이용 기간, 연령, 최근 활동 빈도, 계약 기간** 4개 변수를 선정해 군집 분석을 진행했다.')
 
 # 데이터 불러오기
 df = load_data()
@@ -66,7 +63,7 @@ if df is not None:
 
     # EDA
     with tab1:
-        st.header("탐색적 데이터 분석")
+        # st.header("탐색적 데이터 분석")
 
         # 기본 정보 메트릭
         col1, col2, col3 = st.columns(3)
@@ -109,7 +106,7 @@ if df is not None:
 
     # 학습 / 추론 및 평가
     with tab2:
-        st.header("학습 / 추론 및 평가")
+        # st.header("학습 / 추론 및 평가")
 
         # 모델 불러오기 및 데이터 분리
         pipeline = load_model()
@@ -180,7 +177,7 @@ if df is not None:
 
     # 고도화 전 / 후 평가
     with tab3:
-        st.header("고도화 전 / 후 평가")
+        # st.header("고도화 전 / 후 평가")
         st.write("StandardScaler 기반 K-Means와 RobustScaler 기반 K-Means의 군집 품질을 비교합니다.")
 
         # 고도화 모델 학습 및 평가

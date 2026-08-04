@@ -30,7 +30,7 @@ pages = {
 		# 이름은 추후에 수정
         st.Page(
 			"pages/analysis1.py",
-			title="분석1",
+			title="👥 고객 군집 분석",
 			icon="📊"
 		),
 
@@ -54,7 +54,7 @@ pages = {
 
 		st.Page(
 			"pages/predict.py",
-			title="예측",
+			title="고객 예측",
 			icon="🔮"
 		)
     ]

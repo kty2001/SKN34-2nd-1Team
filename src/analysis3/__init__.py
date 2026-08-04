@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 """
 gym_churn_prediction.ipynb의 분석 흐름을 기능별 모듈로 나눈 패키지.
 
@@ -150,19 +148,3 @@ def run_all(data_path=DATA_PATH):
         "cluster_profile": cluster_profile,
         "sim_df": sim_df,
     }
-=======
-=======
->>>>>>> upstream/develop
-# 예시 추후 수정
-from .eda import test2 as eda_test
-from .evaluate import test3 as evaluate_test
-
-# 사용법
-"""
-from src.analysis1 import eda_test, evaluate_test
-<<<<<<< HEAD
-"""
->>>>>>> 216054d562f7b743ba18e71e1f7c19e3194538b7
-=======
-"""
->>>>>>> upstream/develop
