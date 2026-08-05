@@ -67,7 +67,7 @@
 
 | 구분 | 기술 |
 | ------------ | ------------|
-| **언어** | ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white) |
+| **언어** | ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white) |
 | **데이터 분석** | ![Pandas](https://img.shields.io/badge/Pandas-3.0.3-150458?logo=pandas&logoColor=white) ![NumPy](https://img.shields.io/badge/NumPy-2.5.1-013243?logo=numpy&logoColor=white) |
 | **머신러닝** | ![Scikit-learn](https://img.shields.io/badge/Scikit--learn-1.9.0-F7931E?logo=scikit-learn&logoColor=white) ![XGBoost](https://img.shields.io/badge/XGBoost-3.3.0-189FDD?logo=xgboost&logoColor=white) ![Optuna](https://img.shields.io/badge/Optuna-4.9.0-2C3E50?logo=optuna&logoColor=white) |
 | **시각화** | ![Matplotlib](https://img.shields.io/badge/Matplotlib-3.11.0-11557C?logo=matplotlib&logoColor=white) ![Seaborn](https://img.shields.io/badge/Seaborn-0.13.2-4C72B0?logo=python&logoColor=white) ![Plotly](https://img.shields.io/badge/Plotly-6.9.0-3F4F75?logo=plotly&logoColor=white) ![Altair](https://img.shields.io/badge/Altair-6.2.2-4C78A4?logo=altair&logoColor=white) |
@@ -160,7 +160,37 @@ streamlit run app.py
 ```
 
 ## 7. 📊 데이터 전처리 결과 <a href="#-목차"><sub>🔝</sub></a>
-[개별 레포트 링크](./reports/)
+# 인공지능 데이터 전처리 결과서
+
+## 1. 데이터 전처리 및 변수 선정
+
+* `gym_churn_us.csv` **4,000명 × 14개 변수** 사용
+* 결측치 및 중복 데이터 **없음**
+* 전체 이탈률 **26.5%**
+* 모든 변수가 수치형으로 구성되어 **별도 인코딩 불필요**
+* 분석 목적에 따라 주요 변수를 선정하고 **분류·회귀·군집 분석**을 진행
+* `Contract_period`와 `Month_to_end_contract`, `Avg_class_frequency_total`과 `Avg_class_frequency_current_month`에서 높은 상관관계를 확인하여 분석 목적에 맞게 변수 조정 및 파생변수 생성
+
+### 분류
+
+`Churn`을 예측하기 위해 `Lifetime`, `Age`, `Avg_class_frequency_current_month`, `Contract_period` 등을 주요 변수로 활용하였다. `gender`, `Phone`은 이탈과의 관련성이 낮아 제외하였으며, `Train/Test = 8:2`, `stratify`를 적용하여 이탈 비율을 유지하였다.
+
+![이탈 여부 분포](reports/images/analysis4/01_churn_rate_by_feature.png)
+
+### 회귀
+
+회원의 **이탈 시점 및 유지 기간**을 분석하기 위해 `Lifetime`을 활용하였다. 일반 회귀 및 이탈 시점 분류의 한계를 확인한 후 **Cox 생존분석**을 적용하여 유지 고객까지 포함한 이탈 위험을 분석하였다.
+
+![유지 기간별 이탈률](reports/images/analysis4/02_lifetime_churn.png)
+
+### 군집 분석
+* 전체 데이터 **4,000명 × 14개 변수**를 대상으로 결측치와 중복 데이터를 확인
+* 군집 분석에 필요한 데이터를 선별하여 전처리 진행
+* 데이터 간 스케일 차이를 보정하기 위해 **StandardScaler와 RobustScaler를 적용**
+* 전처리된 데이터를 기반으로 **K-Means 군집 분석**을 수행하여 고객 특성과 이탈 특성을 비교
+
+![군집 분석 전처리 및 K 검증 결과](reports/images/analysis1/03_k_validation.png)
+
 
 ## 8. 🧠 인공지능 학습 결과 <a href="#-목차"><sub>🔝</sub></a>
 [개별 레포트 링크](./reports/)
@@ -180,10 +210,10 @@ streamlit run app.py
 제휴 확대: 기업·지역 제휴 및 추천 프로그램을 통한 신규 회원 유입  
 
 ### 🤝 공통 대책
-신규 회원 관리: 가입 초기 1~3개월 집중 초기 관리 및 목표 설정  
 방문 감소 관리: 알림·쿠폰·상담·이벤트를 통한 재방문 유도  
 장기 계약 유도: 단기 계약 회원에게 장기 계약 할인 및 혜택 제공  
 그룹수업 활성화: 미참여 회원 대상 무료 체험 및 참여 혜택 제공  
+사회초년생 맞춤 계약: 사회초년생의 불안정한 생활 패턴을 고려해 유연한 단기 계약·회원권 일시정지 제도를 제공한다.
 복귀 회원 혜택: 일정 기간 이용하지 않은 기존 회원의 재방문을 유도하기 위한 혜택 제공
 
 ## 11. 💻 서비스 주요 기능 <a href="#-목차"><sub>🔝</sub></a>
