@@ -14,13 +14,20 @@ CLUSTER_FEATURES)로 고정되어 있다. 즉 이 모듈은 그 상수들의 근
     데이터   전체 4,000명 (홀드아웃을 떼지 않는다. 여기서는 모델을 저장하지 않으므로
              train/test 누수 문제가 없고, 전체를 쓰면 분산이 줄어 비교가 안정적이다)
 
+실행하면 측정 결과를 models/analysis4/validation.joblib 로 저장한다. 페이지는 이 파일을
+읽기만 한다 — 여기 있는 교차검증은 수십 초가 걸려 화면에서 즉석 계산할 수 없고,
+수치를 화면에 손으로 옮겨 적으면 재학습 때마다 코드와 어긋나기 때문이다.
+(train.py의 summary.joblib과 같은 방식이다.)
+
 CLI 실행 (프로젝트 루트에서):
     python -m src.analysis4.validation            # 전체
-    python -m src.analysis4.validation --quick    # MLP·학습곡선 제외 (빠름)
+    python -m src.analysis4.validation --quick    # MLP 계열 비교 생략 (빠름)
 """
 
 import sys
+from datetime import datetime
 
+import joblib
 import numpy as np
 import pandas as pd
 from imblearn.over_sampling import SMOTE
@@ -53,6 +60,9 @@ SCENARIO_LADDER = {
 }
 
 SCORING = {"roc_auc": "roc_auc", "f1": "f1"}
+
+# 저장 위치는 classification의 MODEL_DIR을 그대로 쓴다 — 경로를 두 곳에 적지 않는다.
+VALIDATION_PATH = clf.MODEL_DIR / "validation.joblib"
 
 
 def _cv(model, X, y, scoring=None):
@@ -302,6 +312,63 @@ def risk_terciles(df=None, scenario="S1", derived=True, name="xgb", tag=None):
     return out
 
 
+# ────────────────────────────────────────────────────────────────
+# 저장 · 로드 — 페이지가 재계산 없이 읽을 단일 소스
+# ────────────────────────────────────────────────────────────────
+def run_all(df=None):
+    """전처리 결정 근거 측정을 한 번에 실행 → dict
+
+    화면(EDA 탭 '전처리 결정 근거')이 쓰는 것만 담는다. 9.3절 모델 계열 비교는
+    보고서에만 쓰이고 화면에서는 다루지 않으므로 CLI 출력으로만 남긴다.
+    """
+    ft.set_seed()
+    df = load_data() if df is None else df
+
+    noise = cluster_noise_effect(df)
+    age_table, age_corr = age_profile(df)
+    age_rank, age_total, age_imp = age_importance_rank(df)
+    curve, slope = learning_curve_check(df)
+
+    return {
+        # 9.1 제거 — gender / Phone
+        "chi_square": chi_square(df),
+        "logit_pvalues": logit_pvalues(df),
+        "ablation": ablation(df),
+        "cluster_noise": noise,
+        "cluster_noise_gain": noise.attrs["개선율(%)"],
+        # 9.2 유지 — Age
+        "age_profile": age_table,
+        "age_lifetime_corr": age_corr,
+        "age_importance": age_imp,
+        "age_importance_rank": (age_rank, age_total),
+        # 9.5 시나리오 사다리
+        "scenario_ladder": scenario_ladder(df),
+        # 9.6 / 9.9 / 9.10 하지 않기로 한 것들
+        "outlier": outlier_profile(df),
+        "imbalance": imbalance_compare(df),
+        "learning_curve": curve,
+        "learning_curve_slope": slope,
+        "seed": SEED,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+def save_validation(result):
+    """측정 결과 저장 — 보고서 3.1절과 페이지가 함께 읽는 단일 소스"""
+    VALIDATION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(result, VALIDATION_PATH)
+    return VALIDATION_PATH
+
+
+def load_validation():
+    if not VALIDATION_PATH.exists():
+        raise FileNotFoundError(
+            f"전처리 검증 결과가 없습니다: {VALIDATION_PATH}\n"
+            "먼저 실행하세요: python -m src.analysis4.validation"
+        )
+    return joblib.load(VALIDATION_PATH)
+
+
 def _show(title, table, note=None):
     print("\n" + "=" * 78)
     print(title)
@@ -317,29 +384,38 @@ if __name__ == "__main__":
     ft.set_seed()
     df = load_data()
 
-    _show("9.1  카이제곱 독립성 검정", chi_square(df))
-    _show("9.1  로지스틱 계수 p값 (13개 전체, 표준화 후)", logit_pvalues(df).round(4))
-    _show("9.1 / 9.2  변수군 제거 시 CV AUC 변화", ablation(df),
+    # 측정과 저장을 먼저 끝낸다 — 아래 출력 중 하나가 실패해도 결과 파일은 남는다.
+    result = run_all(df)
+    path = save_validation(result)
+
+    _show("9.1  카이제곱 독립성 검정", result["chi_square"])
+    _show("9.1  로지스틱 계수 p값 (13개 전체, 표준화 후)", result["logit_pvalues"].round(4))
+    _show("9.1 / 9.2  변수군 제거 시 CV AUC 변화", result["ablation"],
           "양수면 제거가 이득")
+    _show("9.1  군집 축에서의 gender·Phone 효과", result["cluster_noise"],
+          f"9축이 11축보다 실루엣 {result['cluster_noise_gain']}% 높음")
 
-    noise = cluster_noise_effect(df)
-    _show("9.1  군집 축에서의 gender·Phone 효과", noise,
-          f"9축이 11축보다 실루엣 {noise.attrs['개선율(%)']}% 높음")
-
-    prof, corr = age_profile(df)
-    _show("9.2  연령대별 이탈률", prof, f"Age ↔ Lifetime 상관 {corr}")
-    rank, total, imp = age_importance_rank(df)
-    _show("9.2  Age 순열 중요도 순위", imp.round(4),
+    _show("9.2  연령대별 이탈률", result["age_profile"],
+          f"Age ↔ Lifetime 상관 {result['age_lifetime_corr']}")
+    rank, total = result["age_importance_rank"]
+    _show("9.2  Age 순열 중요도 순위", result["age_importance"].round(4),
           f"Age는 {total}개 중 {rank}위")
 
-    _show("9.5  시나리오 사다리 (xgb · 5-fold CV · 원본 피처)", scenario_ladder(df))
-    _show("9.6  Lifetime 이상치 프로파일", outlier_profile(df))
-    _show("9.9  불균형 처리 비교", imbalance_compare(df))
-    _show("트랙 A 확률 3분위별 실제 이탈률 (S1/derived · xgb 기본)", risk_terciles(df))
+    _show("9.5  시나리오 사다리 (xgb · 5-fold CV · 원본 피처)", result["scenario_ladder"])
+    _show("9.6  Lifetime 이상치 프로파일", result["outlier"])
+    _show("9.9  불균형 처리 비교", result["imbalance"])
+    _show("9.10  학습곡선", result["learning_curve"],
+          f"마지막 구간 기울기 {result['learning_curve_slope']:+.4f}")
+
+    # 저장된 분류 모델을 읽는 유일한 항목이라, 학습 전이면 여기서만 걸린다.
+    try:
+        _show("트랙 A 확률 3분위별 실제 이탈률 (S1/derived · xgb 기본)", risk_terciles(df))
+    except FileNotFoundError as e:
+        print(f"\n(확률 3분위 생략 — {e})")
 
     if quick:
-        print("\n(--quick: 딥러닝 비교·학습곡선 생략)")
+        print("\n(--quick: 딥러닝 비교 생략)")
     else:
         _show("9.3  모델 계열 비교 (S1/derived · 5-fold CV)", model_family_compare(df))
-        lc, slope = learning_curve_check(df)
-        _show("9.10  학습곡선", lc, f"마지막 구간 기울기 {slope:+.4f}")
+
+    print(f"\n저장: {path}")
