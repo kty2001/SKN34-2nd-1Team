@@ -389,7 +389,7 @@ python -m src.analysis4.clustering       # 트랙 C 단독 (3.4절)
 streamlit run app.py                     # 페이지 (학습 없이 저장 결과만 읽음)
 ```
 
-모든 난수는 `SEED=42`로 고정되어 있으며, 재실행 시 `summary.joblib`의 **97개 지표가 동일하게 재생성**됨을 확인함. `models/`는 `.gitignore` 대상이므로 위 명령으로 재생성함.
+모든 난수는 `SEED=42`로 고정
 
 ---
 

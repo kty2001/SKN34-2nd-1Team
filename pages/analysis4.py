@@ -10,8 +10,14 @@
                                          화면 B-2 = 모듈 B-2 (Cox 회귀)
     군집화        clustering.py      (트랙 C) — 2D·3D 분포 + 리텐션 솔루션
 
-이 페이지는 학습하지 않는다. models/analysis4 의 저장 번들과 통합 요약(summary.joblib)을
-읽어 표시만 한다. 학습은 `python -m src.analysis4.train`.
+이 페이지는 학습하지 않는다. models/analysis4 의 저장 번들과 통합 요약(summary.joblib),
+전처리 검증 결과(validation.joblib)를 읽어 표시만 한다.
+    학습        python -m src.analysis4.train
+    전처리 검증  python -m src.analysis4.validation
+
+EDA 탭 끝의 '전처리 결정 근거'와 각 탭 끝의 '모델 사양'은 계산하지 않고 위 두 파일과
+번들 메타데이터만 읽는다. 특히 사양표는 rf 번들이 개당 10MB 안팎이라 모든 파일을 열지
+않고 트랙별 주력 모델만 연다 — 나머지는 파일 목록(이름·크기)으로만 보여준다.
 
 샘플 입력 예측은 별도 예측 페이지로 옮기기로 해서 이 페이지에서는 주석 처리했다.
 분류(탭 2)·타이밍(탭 3)의 예측 블록과 그 전용 헬퍼(입력 폼·모집단 캐시)가 대상이며,
@@ -23,6 +29,8 @@ CHART_H · TALL_H 두 값으로 통일한다. eda.py의 matplotlib Figure는 쓰
 PNG라 반응형이 아니고 Figure마다 종횡비가 달랐다. (보고서용 이미지는 eda.py가 계속 담당한다.)
 표는 eda.all_tables()를 그대로 받아 쓴다.
 """
+
+from datetime import datetime
 
 import altair as alt
 import pandas as pd
@@ -36,6 +44,7 @@ from src.analysis4 import eda
 from src.analysis4 import features as ft
 from src.analysis4 import regression as rg
 from src.analysis4 import train as tr
+from src.analysis4 import validation as va
 
 TRACK_A, TRACK_B, TRACK_C = "A 분류", "B 타이밍", "C 군집"
 
@@ -48,6 +57,20 @@ CONFIGS = {
 }
 
 NOT_TRAINED = "학습 결과 없음. 프로젝트 루트에서 `python -m src.analysis4.train` 을 먼저 실행할 것."
+NOT_VALIDATED = ("전처리 검증 결과 없음. 프로젝트 루트에서 "
+                 "`python -m src.analysis4.validation` 을 먼저 실행할 것.")
+
+# 저장 폴더 — 사양표의 파일 목록에 쓴다. 경로는 train 모듈이 이미 갖고 있어 다시 적지 않는다.
+MODEL_DIR = tr.MODEL_DIR
+
+# 사양표에 노출할 하이퍼파라미터 — get_params()는 수십 개를 쏟아내므로
+# build_models()·군집 파이프라인이 실제로 지정하거나 Optuna가 건드리는 키만 추린다.
+SPEC_PARAM_KEYS = [
+    "n_estimators", "learning_rate", "max_depth", "min_child_weight",
+    "subsample", "colsample_bytree", "gamma", "reg_alpha", "reg_lambda",
+    "C", "penalty", "solver", "max_iter", "class_weight", "scale_pos_weight",
+    "hidden_layer_sizes", "early_stopping", "n_clusters", "n_init", "random_state",
+]
 
 # 트랙 B 화면 번호 -> summary의 구성 태그.
 # 순서형 분류(모듈의 B-1)를 화면에서 빼면서 번호를 앞으로 당겼다. 모듈·보고서의 태그는 그대로이므로
@@ -132,6 +155,17 @@ INTERVENTION_TABLE = pd.DataFrame([
 def cached_summary():
     s = tr.load_summary()
     return s["summary"], s["created_at"], s["seed"]
+
+
+@st.cache_data(show_spinner=False)
+def cached_validation():
+    """전처리 결정 근거 — validation.py가 저장해 둔 측정 결과를 읽기만 한다.
+
+    여기 담긴 교차검증(제거 실험·불균형 비교·학습곡선)은 수십 초가 걸려 화면에서
+    즉석 계산할 수 없다. 대신 화면에 수치를 적어 두면 재학습 때 코드와 어긋나므로
+    summary.joblib과 같은 방식으로 파일에서 읽는다.
+    """
+    return va.load_validation()
 
 
 @st.cache_data(show_spinner=False)
@@ -285,6 +319,190 @@ def cached_lever_effects(df):
 def cached_scenarios():
     """네 구성의 실제 피처 목록 — 화면 설명과 학습 코드가 어긋나지 않도록 직접 뽑아 보여준다."""
     return ft.describe_scenarios()
+
+
+# ── 모델 사양 ─────────────────────────────────────────────────────
+# 저장 번들의 메타데이터만 읽는다. 여기서 다시 적합하지 않으므로 화면에 뜨는 사양은
+# 실제로 models/analysis4 에 들어 있는 모델의 사양이다.
+def algo_label(estimator):
+    """추정기 이름. Pipeline이면 단계를 이어 붙여 스케일러 포함 여부까지 드러낸다."""
+    if hasattr(estimator, "steps"):
+        return " + ".join(type(step).__name__ for _, step in estimator.steps)
+    return type(estimator).__name__
+
+
+def model_params(estimator):
+    """하이퍼파라미터에서 SPEC_PARAM_KEYS만 추린다 (Pipeline이면 마지막 단계 기준).
+
+    get_params()는 기본값까지 수십 개를 내놓아 그대로 띄우면 무엇을 정한 값인지 안 보인다.
+    sklearn이 폐기 예정 인자에 넣어 두는 'deprecated' 자리표시자도 뺀다 — 설정값이 아니다.
+    """
+    inner = estimator.steps[-1][1] if hasattr(estimator, "steps") else estimator
+    got = inner.get_params()
+    return {k: got[k] for k in SPEC_PARAM_KEYS
+            if got.get(k) is not None and got.get(k) != "deprecated"}
+
+
+def format_param(value):
+    """하이퍼파라미터 한 칸 — 없으면 '—', 정수로 떨어지는 실수는 소수점을 떼고 쓴다."""
+    if value is None:
+        return "—"
+    if isinstance(value, float):
+        return f"{value:g}" if float(value).is_integer() else f"{value:.5g}"
+    return str(value)
+
+
+def params_table(params):
+    """{모델 라벨: {파라미터: 값}} -> 표
+
+    모델마다 조정하는 파라미터가 달라 빈칸이 생기고 값 타입(int·float·str·tuple)도 섞인다.
+    열 dtype에 맡기면 빈칸이 NaN으로, 300이 300.0으로 나오므로 칸마다 직접 문자열로 만든다.
+    """
+    keys = list(dict.fromkeys(key for spec in params.values() for key in spec))
+    return pd.DataFrame([
+        {"하이퍼파라미터": key,
+         **{label: format_param(spec.get(key)) for label, spec in params.items()}}
+        for key in keys
+    ])
+
+
+def sample_text(bundle):
+    """번들에 기록된 표본 수 — 트랙마다 저장 필드가 달라 없으면 '—'로 둔다."""
+    n_train, n_test = bundle.get("n_train"), bundle.get("n_test")
+    if n_train is None and n_test is None:
+        return "—"
+    if n_test is None:
+        return f"{n_train:,}"
+    return f"{n_train:,} / {n_test:,}"
+
+
+@st.cache_data(show_spinner=False)
+def cached_model_files(prefix):
+    """저장 파일 목록 — joblib을 열지 않고 파일 이름·크기만 읽는다."""
+    rows = [{"파일": p.name,
+             "크기(MB)": round(p.stat().st_size / 1024 ** 2, 2),
+             "저장 시각": datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y-%m-%d %H:%M")}
+            for p in sorted(MODEL_DIR.glob(f"{prefix}*.joblib"))]
+    return pd.DataFrame(rows)
+
+
+@st.cache_resource(show_spinner=False)
+def cached_clf_specs():
+    """분류 주력 모델의 사양 + 하이퍼파라미터
+
+    네 구성 × 4모델 = 18개 번들을 전부 열면 rf만으로 50MB가 넘는다. 보고 대상인
+    시나리오별 주력 모델(S1/derived xgb · S2/raw logreg)의 기본·고도화만 연다.
+    모델 객체를 그대로 들고 있으므로 cache_data(피클 복제)가 아니라 cache_resource.
+    """
+    rows, params = [], {}
+    for scenario, derived in (("S1", True), ("S2", False)):
+        name = clf.PRIMARY_MODEL[scenario]
+        config = ft.scenario_tag(scenario, derived)
+        for tag, stage in ((None, ft.STAGE_BASE), ("tuned", ft.STAGE_TUNED)):
+            try:
+                bundle = clf.load_bundle(scenario, derived, name, tag)
+            except FileNotFoundError:
+                continue
+            rows.append({
+                "구성": config,
+                "단계": bundle.get("stage", stage),
+                "알고리즘": algo_label(bundle["model"]),
+                "피처 수": len(bundle["features"]),
+                "임계값": round(float(bundle.get("threshold", 0.5)), 4),
+                "test AUC": round(float(bundle["test"]["roc_auc"]), 4),
+                "test F1": round(float(bundle["test"]["f1"]), 4),
+                "표본 (train/test)": sample_text(bundle),
+                "seed": bundle["seed"],
+                "학습 일시": bundle["trained_at"].replace("T", " "),
+                "파일": clf.bundle_path(scenario, derived, name, tag).name,
+            })
+            params[f"{config} · {name} · {bundle.get('stage', stage)}"] = model_params(bundle["model"])
+    return pd.DataFrame(rows), params
+
+
+@st.cache_resource(show_spinner=False)
+def cached_reg_specs():
+    """트랙 B 사양 — 화면 B-1(모듈 b3 최소제곱)과 B-2(Cox)
+
+    Cox는 sklearn 추정기가 아니라 statsmodels PHReg라 번들 구조가 다르다.
+    모델 객체 대신 계수(params)와 표준화 scaler가 저장되므로 따로 세운다.
+    """
+    rows, params = [], {}
+
+    try:
+        b3 = rg.load_bundle("b3", name=REG_OLS_MODEL)
+    except FileNotFoundError:
+        b3 = None
+    if b3 is not None:
+        rows.append({
+            "화면 구분": "B-1 최소제곱 회귀 (비교군)",
+            "알고리즘": algo_label(b3["model"]),
+            "피처 수": len(b3["features"]),
+            "지표": "test RMSE",
+            "값": round(float(b3["test"]["rmse"]), 4),
+            "표본 (train/test)": sample_text(b3),
+            "seed": b3["seed"],
+            "학습 일시": b3["trained_at"].replace("T", " "),
+            "파일": rg.bundle_path("b3", name=REG_OLS_MODEL).name,
+        })
+        params["B-1 최소제곱 회귀"] = model_params(b3["model"])
+
+    try:
+        b2 = rg.load_bundle("b2")
+    except FileNotFoundError:
+        b2 = None
+    if b2 is not None:
+        rows.append({
+            "화면 구분": "B-2 Cox 비례위험 회귀 (주력)",
+            # 저장된 스케일러 종류를 직접 읽는다 — 표준화 기준은 train만 보고 정한 값이다.
+            "알고리즘": f"{type(b2['scaler']).__name__} + PHReg (statsmodels)",
+            "피처 수": len(b2["features"]),
+            "지표": "C-index",
+            "값": round(float(b2["c_index"]), 4),
+            "표본 (train/test)": sample_text(b2),
+            "seed": b2["seed"],
+            "학습 일시": b2["trained_at"].replace("T", " "),
+            "파일": rg.bundle_path("b2").name,
+        })
+    return pd.DataFrame(rows), params
+
+
+@st.cache_resource(show_spinner=False)
+def cached_cluster_spec():
+    """트랙 C 사양 — 파이프라인(스케일러 + KMeans) 구성과 등급 매핑 기준"""
+    bundle = cl.load_bundle()
+    pipe = bundle["pipeline"]
+    row = {
+        "알고리즘": algo_label(pipe),
+        "군집 수 k": bundle["k"],
+        "축(피처) 수": len(bundle["features"]),
+        "실루엣": round(float(bundle["silhouette"]), 4),
+        "표본": f"{bundle['n']:,}",
+        "seed": bundle["seed"],
+        "학습 일시": bundle["trained_at"].replace("T", " "),
+        "파일": cl.bundle_path(bundle["k"]).name,
+    }
+    return pd.DataFrame([row]), {"KMeans": model_params(pipe)}
+
+
+def render_model_spec(spec, params, file_prefix, note=None, params_note=None):
+    """탭 하단 공통 '모델 사양' 섹션 — 표 + 하이퍼파라미터 + 저장 파일 목록"""
+    st.subheader("모델 사양")
+    if spec.empty:
+        st.info(NOT_TRAINED)
+        return
+    st.dataframe(spec, hide_index=True, width="stretch")
+    if note:
+        st.caption(note)
+    # 조정할 파라미터가 없는 모델(최소제곱 회귀·Cox)만 있으면 표가 비므로 접이식 자체를 열지 않는다.
+    table = params_table(params) if params else pd.DataFrame()
+    if not table.empty:
+        with st.expander("하이퍼파라미터"):
+            if params_note:
+                st.caption(params_note)
+            st.dataframe(table, hide_index=True, width="stretch")
+    with st.expander("저장된 모델 파일"):
+        st.dataframe(cached_model_files(file_prefix), hide_index=True, width="stretch")
 
 
 def metric_table(summary, track, config_contains=None):
@@ -559,6 +777,23 @@ def search_k_chart(ks, height=318):
     return (best + line).properties(height=height)
 
 
+def learning_curve_chart(curve, height=CHART_H):
+    """학습곡선 — 요점은 '마지막 구간이 평평한가'라 y축을 데이터 범위로 좁힌다.
+
+    0부터 그리면 0.984~0.988의 변화가 선 하나로 뭉개져 포화 여부가 보이지 않는다.
+    """
+    lo, hi = float(curve["CV AUC"].min()), float(curve["CV AUC"].max())
+    pad = (hi - lo) * 0.2 or 0.001
+    return alt.Chart(curve).mark_line(point=True, color=eda.COLOR_STAY).encode(
+        x=alt.X("학습 표본:Q", title="학습 표본 수", scale=alt.Scale(nice=False, padding=20)),
+        y=alt.Y("CV AUC:Q", title="CV ROC-AUC",
+                scale=alt.Scale(domain=[lo - pad, hi + pad], nice=False),
+                axis=alt.Axis(format=".4f")),
+        tooltip=[alt.Tooltip("학습 표본:Q", title="학습 표본", format=",.0f"),
+                 alt.Tooltip("CV AUC:Q", format=".4f")],
+    ).properties(height=height)
+
+
 # ── [예측 이전] 예측 입력 폼 ───────────────────────────────────────
 # 예측 페이지로 옮기기로 해 비활성. 이 블록은 두 예측 블록에서만 쓰였다.
 # @st.cache_data(show_spinner=False)
@@ -712,6 +947,125 @@ def render_eda(df):
                                         counts=eda.age_lifetime_cross(df, metric="count")),
                             width="stretch")
 
+    st.divider()
+    render_preprocessing()
+
+
+# ── EDA 탭 · 전처리 결정 근거 ─────────────────────────────────────
+# 파생변수 정의는 상수(DERIVED_DOC)라 항상 보이고, 측정 근거는 validation.joblib이
+# 있을 때만 보인다. 분류 탭에도 같은 DERIVED_DOC을 띄우는데, 거기서는 S1/S2 구성 설명의
+# 일부라 맥락이 필요해 옮기지 않고 양쪽에서 같은 상수를 쓴다.
+def decision_summary(v):
+    """전처리 결정 요약표 — 수치는 저장된 검증 결과에서 뽑는다 (화면에 적어 두지 않는다)."""
+    chi = v["chi_square"].set_index("변수")["p_value"]
+    delta = v["ablation"].pivot_table(index="제거 대상", columns="모델", values="변화")
+    outlier, others = v["outlier"].iloc[0], v["outlier"].iloc[1]
+    imbalance = v["imbalance"].set_index("방식")
+    auc_gap = float(imbalance["roc_auc"].max() - imbalance["roc_auc"].min())
+
+    rows = [
+        {"대상": "gender · Phone", "결정": "제거",
+         "근거": (f"카이제곱 p={chi['gender']:.4f} / {chi['Phone']:.4f} (이탈과 독립) · "
+                 f"제거 시 CV AUC logreg {delta.loc['gender + Phone', 'logreg']:+.4f} · "
+                 f"xgb {delta.loc['gender + Phone', 'xgb']:+.4f} · "
+                 f"군집 실루엣 {v['cluster_noise_gain']:+.1f}%")},
+        {"대상": "Age", "결정": "유지",
+         "근거": (f"제거 시 CV AUC logreg {delta.loc['Age', 'logreg']:+.4f} · "
+                 f"xgb {delta.loc['Age', 'xgb']:+.4f} (둘 다 하락) · "
+                 f"Lifetime과의 상관 {v['age_lifetime_corr']}로 독립 신호")},
+    ]
+    rows += [{"대상": row["대체 대상"], "결정": f"{row['파생변수']}로 대체", "근거": row["효과"]}
+             for _, row in DERIVED_DOC.iterrows()]
+    rows += [
+        {"대상": f"{ft.TIMING_TARGET} 이상치", "결정": "제거하지 않음",
+         "근거": (f"{int(outlier['인원']):,}명의 이탈률이 {outlier['이탈률(%)']}% "
+                 f"(그 외 {int(others['인원']):,}명은 {others['이탈률(%)']}%) — 최우량 장기회원")},
+        {"대상": "클래스 불균형", "결정": "처리 미적용",
+         "근거": (f"세 방식의 AUC 차이 {auc_gap:.4f} · Precision은 미적용이 최고"
+                 f"({imbalance.loc['미적용', 'precision']:.4f})")},
+        {"대상": "데이터 추가 수집", "결정": "불필요",
+         "근거": f"학습곡선 마지막 구간 기울기 {v['learning_curve_slope']:+.4f} (포화)"},
+    ]
+    return pd.DataFrame(rows)
+
+
+def render_preprocessing():
+    st.subheader("전처리 결정 근거")
+
+    st.markdown("**파생변수 정의** — 기존 변수 대체")
+    st.dataframe(DERIVED_DOC, hide_index=True, width="stretch")
+    st.caption(f"`{ft.VISIT_DELTA}`는 `{ft.LEAK_SUSPECT}`를 품고 있어 S2에서는 쓰지 않음. "
+               "비율(÷)이 아니라 차이(−)로 정의한 이유는 `Avg_class_frequency_total == 0`인 고객이 "
+               "있어 `Zero Division`이 발생하기 때문")
+
+    try:
+        v = cached_validation()
+    except FileNotFoundError:
+        st.info(NOT_VALIDATED)
+        return
+
+    st.markdown("**결정 요약**")
+    st.dataframe(decision_summary(v), hide_index=True, width="stretch")
+
+    with st.expander("제거 — `gender` · `Phone` (세 방향 모두 무신호)"):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("카이제곱 독립성 검정 — 변수 하나만 보고 판단")
+            st.dataframe(v["chi_square"].round(4), hide_index=True, width="stretch")
+        with col2:
+            st.markdown("로지스틱 계수 p값 (원본 13개 · 표준화 후) — 나머지 변수를 통제하고 판단")
+            st.dataframe(v["logit_pvalues"].round(4).head(6), hide_index=True, width="stretch")
+        st.caption("두 검정은 보는 방향이 다르므로 **둘 다** 무신호로 나와야 제거 근거가 됨")
+
+        st.markdown("제거 시 CV AUC 변화 — 양수면 제거가 이득")
+        st.dataframe(v["ablation"][v["ablation"]["제거 대상"] == "gender + Phone"],
+                     hide_index=True, width="stretch")
+
+        st.markdown("군집 축에서의 효과")
+        st.dataframe(v["cluster_noise"], hide_index=True, width="stretch")
+        st.caption(f"9축이 11축보다 실루엣 {v['cluster_noise_gain']}% 높음 — KMeans는 모든 축을 "
+                   "동등하게 보므로 분류에서 무해한 변수가 거리 계산에서는 잡음이 됨")
+
+    with st.expander("유지 — `Age` (빼면 두 모델 모두 성능 하락)"):
+        rank, total = v["age_importance_rank"]
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("제거 시 CV AUC 변화 — 음수면 하락")
+            st.dataframe(v["ablation"][v["ablation"]["제거 대상"] == "Age"],
+                         hide_index=True, width="stretch")
+            st.caption(f"순열 중요도 {total}개 중 {rank}위 · "
+                       f"`{ft.TIMING_TARGET}`과의 상관 {v['age_lifetime_corr']}")
+        with col2:
+            st.markdown("연령대별 이탈률")
+            st.dataframe(v["age_profile"].reset_index().rename(columns={"Age": "연령대"}),
+                         hide_index=True, width="stretch")
+        st.caption(f"`{ft.TIMING_TARGET}`의 대리변수일 가능성을 검토했으나, 같은 유지기간 구간 "
+                   "안에서도 연령 차이가 유지되어(위 교차분석) 독립 신호임이 확인됨")
+
+    with st.expander("하지 않기로 한 것 — 이상치 제거 · 불균형 처리 · 추가 수집"):
+        st.markdown(f"**이상치 — 제거하지 않음** (`{ft.TIMING_TARGET}` IQR 기준)")
+        st.dataframe(v["outlier"], hide_index=True, width="stretch")
+        st.caption("이상치 집단이 이탈률 0%인 최우량 장기회원이라, 지우면 신호가 가장 강한 구간을 버리게 됨")
+
+        st.markdown("**불균형 처리 — 기본 미적용** (이탈 26.5% · 2.8 : 1)")
+        st.dataframe(v["imbalance"], hide_index=True, width="stretch")
+        st.caption("지표별로 승자가 갈림 — Precision은 미적용, Recall은 SMOTE. 미적용을 기본으로 두는 "
+                   "이유는 전처리 단계가 줄고 잘못된 개입 비용을 줄이는 Precision이 가장 높기 때문. "
+                   "Recall이 필요하면 `build_models(balanced=True)`로 전환")
+
+        st.markdown("**데이터 추가 수집 — 불필요**")
+        col1, col2 = st.columns([3, 2])
+        with col1:
+            st.altair_chart(learning_curve_chart(v["learning_curve"]), width="stretch")
+        with col2:
+            st.dataframe(v["learning_curve"], hide_index=True, width="stretch",
+                         height=ROW_PX * (len(v["learning_curve"]) + 1) + 3)
+        st.caption(f"마지막 구간 기울기 {v['learning_curve_slope']:+.4f} — 표본을 늘려도 "
+                   "더 오르지 않는 포화 상태")
+
+    st.caption(f"저장된 검증 결과를 읽어 표시 — 검증 {v['created_at'].replace('T', ' ')} "
+               f"· seed {v['seed']}")
+
 
 # ── 탭 2 · 분류 (트랙 A) ──────────────────────────────────────────
 # [예측 이전] 샘플 입력 예측 — 예측 페이지로 옮기기로 해 비활성.
@@ -843,6 +1197,15 @@ def render_classification(df, summary):
 
     # [예측 이전] st.divider() + render_predict_classification(df, scenario, derived, name)
 
+    st.divider()
+    spec, params = cached_clf_specs()
+    render_model_spec(
+        spec, params, "clf_",
+        note="시나리오별 주력 모델(S1은 xgb · S2는 logreg)의 기본·고도화 사양. "
+             "임계값은 고도화 단계에서 train 교차검증(OOF)으로 다시 구한 값",
+        params_note="고도화 행은 Optuna(30 trial)가 찾은 값, 기본 행은 `build_models()`가 "
+                    "지정한 값. 설정하지 않은 기본값은 표에서 뺌")
+
 
 # ── 탭 3 · 이탈 타이밍 (트랙 B) ───────────────────────────────────
 # [예측 이전] 샘플 입력 예측 — 예측 페이지로 옮기기로 해 비활성.
@@ -962,6 +1325,11 @@ def render_regression(df, summary):
     st.dataframe(corr, hide_index=True, width="stretch")
 
     # [예측 이전] st.divider() + render_predict_regression(df)
+
+    st.divider()
+    spec, params = cached_reg_specs()
+    render_model_spec(
+        spec, params, "reg_")
 
 
 # ── 탭 4 · 군집화 (트랙 C) ────────────────────────────────────────
@@ -1090,7 +1458,17 @@ def render_clustering(df):
     with col2:
         st.dataframe(ks[["k", "실루엣", "최소최대_격차"]].round(4), hide_index=True,
                      width="stretch", height=ROW_PX * (len(ks) + 1) + 3)
-   
+
+    st.divider()
+    try:
+        spec, params = cached_cluster_spec()
+    except FileNotFoundError as e:
+        st.subheader("모델 사양")
+        st.warning(str(e))
+    else:
+        render_model_spec(
+            spec, params, "cluster_")
+
 
 # ── 페이지 ────────────────────────────────────────────────────────
 # 탭 버튼은 기본값이 글자 폭에 딱 붙어 작다. flex로 폭을 균등 분배해 가로로 채운다.
