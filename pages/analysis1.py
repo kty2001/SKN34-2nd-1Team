@@ -157,7 +157,10 @@ if df is not None:
         cluster_mean = cluster_mean.rename(columns=short_names)
         st.pyplot(plot_cluster_feature(cluster_mean))
         st.markdown("### 📌 분석 요약")
-        st.write("Cluster 0은 '일반 유저', 1은 '고계약 고객', 2는 '장기 충성 고객', 3은 '신규·라이트 유저'로 요약할 수 있습니다.")
+        st.write("Cluster 0은 '일반 고객'")
+        st.write("Cluster 1은 '장기 계약 고객'")
+        st.write("Cluster 2는 'VIP 고객'")
+        st.write("Cluster 3은 '이탈 위험 고객'")
         
         # Cluster별 이탈률
         st.markdown("---")
@@ -221,7 +224,9 @@ if df is not None:
         st.dataframe(upgrade_cluster_mean.style.format("{:.2f}"), use_container_width=True)
         st.pyplot(plot_cluster_feature(upgrade_cluster_mean))
         st.markdown("### 📌 분석 요약")
-        st.write("Cluster 0은 '장기 충성 고객', 1은 '고계약 집중 고객', 2는 '신규·라이트 유저'로 요약할 수 있습니다.")
+        st.write("Cluster 0은 'VIP 고객'")
+        st.write("Cluster 1은 '장기 계약 고객'")
+        st.write("Cluster 2는 '이탈 위험 고객'")
 
         st.markdown("---")
         st.subheader("고도화 후 Cluster별 이탈률")
