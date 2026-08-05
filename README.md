@@ -201,7 +201,7 @@ streamlit run app.py
 
 
 ## 8. 🧠 인공지능 학습 결과 <a href="#-목차"><sub>🔝</sub></a>
-## 분석1
+## 분석 1
 ### 기본 모델
 
 **StandardScaler → K-Means**
@@ -229,7 +229,7 @@ streamlit run app.py
 
 ---
 
-## 분석2
+## 분석 2
 ### 기본 모델
 
 **Decision Tree / Random Forest**
@@ -251,7 +251,7 @@ streamlit run app.py
 
 ---
 
-## 분석3
+## 분석 3
 * Logistic Regression, Random Forest, Gradient Boosting 등을 비교
 * XGBoost 추가 및 하이퍼파라미터 튜닝을 진행
 
@@ -265,7 +265,7 @@ streamlit run app.py
 
 ---
 
-## 분석4
+## 분석 4
 ### 이탈 예측
 
 XGBoost, Random Forest, Logistic Regression, MLP를 비교하여 **XGBoost를 최종 모델로 선정**
