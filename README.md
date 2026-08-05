@@ -6,13 +6,14 @@
     3. 프로젝트 진행 일정
     4. 기술 스택
     5. 프로젝트 구조
-    6. 데이터 전처리 결과
-    7. 인공지능 학습 결과
-    8. 학습된 인공지능 모델
-    9. 고객 이탈 방지 전략
-    10. 서비스 주요 기능
-    11. 트러블슈팅
-    12. 한줄 회고
+    6. 실행 방법
+    7. 데이터 전처리 결과
+    8. 인공지능 학습 결과
+    9. 학습된 인공지능 모델
+    10. 고객 이탈 방지 전략
+    11. 서비스 주요 기능
+    12. 트러블슈팅
+    13. 한줄 회고
 
 ## 1. 🤝 팀 소개
 
@@ -118,4 +119,49 @@ project_2nd/
 ├─ README.md                # 프로젝트 소개 및 문서
 ├─ requirements.txt         # 프로젝트 의존성 패키지
 └─ .gitignore               # Git 관리 제외 파일 설정
+```
+
+## 6. ▶️ 실행 방법
+
+### 1. 권장 (uv + pyproject.toml)
+```bash
+# uv 설치 (최초 1회)
+pip install uv
+
+# 의존성 설치 및 가상환경 생성
+uv sync
+
+# Streamlit 실행
+uv run streamlit run app.py
+```
+
+### 2. uv + requirements.txt
+```bash
+# uv 설치 (최초 1회)
+pip install uv
+
+# 가상환경 생성
+uv venv
+
+# 의존성 설치
+uv pip install -r requirements.txt
+
+# Streamlit 실행
+uv run streamlit run app.py
+```
+
+### 3. Python venv + requirements.txt
+```bash
+# 가상환경 생성
+python -m venv .venv
+
+# 가상환경 활성화
+.venv\Scripts\activate      # Windows
+source .venv/bin/activate   # macOS / Linux
+
+# 의존성 설치
+pip install -r requirements.txt
+
+# Streamlit 실행
+streamlit run app.py
 ```
