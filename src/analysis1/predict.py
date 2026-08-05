@@ -80,10 +80,9 @@ def render_prediction_page():
         st.success(f"예측 결과: **Cluster {cluster}**")
 
         cluster_name = {
-            0: "장기 충성 고객",
-            1: "고계약 집중 고객",
-            2: "신규·라이트 유저",
-            3: "이탈 위험 고객"
+            0: "VIP 고객",
+            1: "장기계약 고객",
+            2: "이탈 위험 고객",
         }
 
         if cluster in cluster_name:
