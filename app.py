@@ -30,25 +30,25 @@ pages = {
 		# 이름은 추후에 수정
         st.Page(
 			"pages/analysis1.py",
-			title="👥 고객 군집 분석",
+			title="고객 군집 분석",
 			icon="📊"
 		),
 
 		st.Page(
 			"pages/analysis2.py",
-			title="분석2",
+			title="회원 이탈 예측",
 			icon="📈"
 		),
 
 		st.Page(
 			"pages/analysis3.py",
-			title="분석3",
+			title="이탈 예측 및 방지 방안",
 			icon="🔍"
 		),
 
 		st.Page(
 			"pages/analysis4.py",
-			title="분석4",
+			title="회원 이탈 진단 및 솔루션",
 			icon="📋"
 		),
 

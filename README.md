@@ -1,84 +1,167 @@
-# 폴더 구조
+# 🤖 AI 기반 고객 이탈 분석 프로젝트
+
+## 📑 목차 
+    1. 팀 소개
+    2. 프로젝트 개요
+    3. 프로젝트 진행 일정
+    4. 기술 스택
+    5. 프로젝트 구조
+    6. 실행 방법
+    7. 데이터 전처리 결과
+    8. 인공지능 학습 결과
+    9. 학습된 인공지능 모델
+    10. 고객 이탈 방지 전략
+    11. 서비스 주요 기능
+    12. 트러블슈팅
+    13. 한줄 회고
+
+## 1. 🤝 팀 소개
+
+ ✨ 팀 명: ???
+
+| 이름 | 담당 |
+|---|---|
+| 이현준 | Streamlit UI 구현 · 군집 분석 |
+| 정예린 | 데이터 수집 · 분류 모델 분석 |
+| 김재현 | 분류 모델 · 군집 분석 |
+| 김태윤 | 회귀 · 분류 · 군집 분석 |
+
+## 2. 🔎 프로젝트 개요
+
+### 프로젝트명
+
+**헬스장 고객 이용 특성 기반 이탈 분석 및 고객군 예측 시스템**
+
+### 프로젝트 소개
+
+헬스장 고객의 **이용 기간, 연령, 방문 빈도, 계약 기간 등의 데이터를 분석**하여 고객의 이용 특성을 파악하고, 고객군을 군집화하여 **고객군별 이탈률과 이탈 특성**을 분석하는 프로젝트입니다.
+
+또한 분류·회귀·군집 분석을 활용하여 고객 데이터를 다양한 관점에서 분석하고, 분석 결과를 **Streamlit**으로 시각화하여 고객 이탈 현황과 특성을 쉽게 확인할 수 있도록 구현했습니다.
+
+### 프로젝트 필요성
+
+일반적으로 헬스장 회원의 이탈 원인은 단순히 **운동에 대한 흥미가 떨어지거나 운동을 하기 싫어서**라고 생각하기 쉽습니다.
+
+하지만 실제로는 운동을 꾸준히 하는 고객이나 이용 빈도가 높은 고객도 계약을 종료하거나 이탈할 수 있습니다. 따라서 단순한 이용 빈도만으로는 고객 이탈의 원인을 충분히 설명하기 어렵습니다.
+
+이에 고객의 **이용 기간, 연령, 방문 빈도, 계약 기간 등 다양한 특성**을 종합적으로 분석하여 어떤 고객군에서 이탈이 많이 발생하는지 파악하고, 고객 이탈에 영향을 미치는 패턴을 찾아볼 필요가 있습니다.
+
+### 프로젝트 목표
+
+* 고객 데이터를 기반으로 **주요 이용 특성과 이탈 패턴 파악**
+* 고객 특성에 따른 **고객군 분류 및 군집별 특성 분석**
+* 고객군별 **이탈률을 비교하여 이탈 위험이 높은 고객군 파악**
+* 분류·회귀·군집 분석을 활용한 **다각적인 고객 분석**
+* 분석 결과를 Streamlit으로 구현하여 **직관적인 데이터 분석 환경 제공**
+* 분석 및 모델 고도화를 통해 **고객 이탈 관리에 활용할 수 있는 인사이트 도출**
+
+## 3. 📅 프로젝트 진행 일정
+
+| 기간              | 주요 작업                   |
+| --------------- | ----------------------- |
+| **7/21 ~ 7/24** | 데이터 수집                  |
+| **7/25 ~ 7/26** | 아키텍처 설계 · UI 설계 및 구현    |
+| **7/27 ~ 7/29** | 데이터 분석                  |
+| **7/30 ~ 8/1**  | 모델 학습 및 고도화 · 개별 페이지 구현 |
+| **8/2**         | 예측 페이지 구현               |
+| **8/3**         | 개별 분석 레포트 작성            |
+| **8/4**         | 최종 레포트 작성               |
+| **8/5**         | 프로젝트 README 작성 · 최종 점검  |
+| **8/6**         | 프로젝트 발표              |
+
+## 4. 🛠️ 기술 스택
+
+| 구분 | 기술 |
+| ------------ | ------------|
+| **언어** | ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white) |
+| **데이터 분석** | ![Pandas](https://img.shields.io/badge/Pandas-3.0.3-150458?logo=pandas&logoColor=white) ![NumPy](https://img.shields.io/badge/NumPy-2.5.1-013243?logo=numpy&logoColor=white) |
+| **머신러닝** | ![Scikit-learn](https://img.shields.io/badge/Scikit--learn-1.9.0-F7931E?logo=scikit-learn&logoColor=white) ![XGBoost](https://img.shields.io/badge/XGBoost-3.3.0-189FDD?logo=xgboost&logoColor=white) ![Optuna](https://img.shields.io/badge/Optuna-4.9.0-2C3E50?logo=optuna&logoColor=white) |
+| **시각화** | ![Matplotlib](https://img.shields.io/badge/Matplotlib-3.11.0-11557C?logo=matplotlib&logoColor=white) ![Seaborn](https://img.shields.io/badge/Seaborn-0.13.2-4C72B0?logo=python&logoColor=white) ![Plotly](https://img.shields.io/badge/Plotly-6.9.0-3F4F75?logo=plotly&logoColor=white) ![Altair](https://img.shields.io/badge/Altair-6.2.2-4C78A4?logo=altair&logoColor=white) |
+| **웹 애플리케이션** | ![Streamlit](https://img.shields.io/badge/Streamlit-1.60.0-FF4B4B?logo=streamlit&logoColor=white) |
+| **협업** | ![Git](https://img.shields.io/badge/Git-F05032?logo=git&logoColor=white) ![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white) |
+
+## 5. 📁 프로젝트 구조
 
 ```text
 project_2nd/
-├─ .streamlit/                 # Streamlit 설정
-│  └─ config.toml              # Streamlit 화면 및 앱 설정 (새로고침 없이 바로 적용)
+├─ .streamlit/              # Streamlit 환경 및 화면 설정
+├─ data/                    # 분석에 사용되는 원본 데이터
+├─ docs/                    # 프로젝트 문서 자료
 │
-├─ data/                       # 프로젝트 데이터
-│  └─ gym_churn_us.csv         # 헬스장 고객 이탈 데이터
+├─ models/                  # 학습된 모델 및 예측에 필요한 파일
+│  ├─ analysis1/            
+│  ├─ analysis2/            
+│  ├─ analysis3/           
+│  └─ analysis4/            
 │
-├─ docs/                       # 프로젝트 관련 문서 (readme에 들어갈 파일 등)
-│  └─ sample.md                
+├─ notebooks/               # 분석 및 모델링 과정의 Jupyter Notebook
+│  ├─ analysis1.ipynb
+│  ├─ analysis2.ipynb
+│  ├─ analysis3.ipynb
+│  └─ analysis4.ipynb
 │
-├─ models/                     # 학습된 모델 저장 (joblib 저장 위치)
-│  ├─ analysis1/               # 분석 1 모델
-│  │  └─ sample                
-│  ├─ analysis2/               # 분석 2 모델
-│  │  └─ sample
-│  ├─ analysis3/               # 분석 3 모델
-│  │  └─ sample
-│  └─ analysis4/               # 분석 4 모델
-│     └─ sample
+├─ pages/                   # Streamlit 페이지
+│  ├─ dashboard.py         # 전체 분석 결과 대시보드
+│  ├─ analysis1~4.py       # 팀원별 분석 결과 페이지
+│  └─ predict.py           # 샘플 데이터 예측 페이지
 │
-├─ notebooks/                  # 데이터 분석 및 실험 (ipynb 파일 저장 위치)
-│  └─ sample.py                
+├─ reports/                 # 분석 및 프로젝트 결과 보고서
+│  ├─ images/              # 분석별 시각화 결과 이미지
+│  │  ├─ analysis1~4/     # 각 분석별 그래프 및 결과 이미지
+│  ├─ analysis1~4_report.md # 팀원별 분석 보고서
+│  └─ final_report.md      # 최종 프로젝트 보고서
 │
-├─ pages/                      # Streamlit 페이지
-│  ├─ analysis1.py             # 분석 1 페이지
-│  ├─ analysis2.py             # 분석 2 페이지
-│  ├─ analysis3.py             # 분석 3 페이지
-│  ├─ analysis4.py             # 분석 4 페이지
-│  ├─ dashboard.py             # 전체 분석 결과 대시보드
-│  └─ sample_pred.py           # 모델 추론 및 예측 페이지
+├─ src/                     # 데이터 분석 및 모델링 코드
+│  ├─ analysis1~4/         # 분석별 EDA·전처리·학습·평가·예측 모듈
+│  └─ common/              # 공통 데이터 로딩 및 설정
 │
-├─ reports/                    # 분석 및 프로젝트 결과 보고서
-│  ├─ analysis1_report.md      # 분석 1 보고서
-│  ├─ analysis2_report.md      # 분석 2 보고서
-│  ├─ analysis3_report.md      # 분석 3 보고서
-│  ├─ analysis4_report.md      # 분석 4 보고서
-│  └─ final_report.md          # 팀 전체 최종 종합 보고서
-│
-├─ src/                        # 실제 분석 및 머신러닝 코드
-│  ├─ analysis1/               # 분석 1 코드
-│  │  ├─ __init__.py           # 패키지 초기화 (함수 쉽게 불러오기 위한 설정)
-│  │  ├─ advanced.py           # 모델 고도화
-│  │  ├─ eda.py                # 탐색적 데이터 분석
-│  │  ├─ evaluate.py           # 모델 성능 평가
-│  │  └─ train.py              # 모델 학습
-│  │
-│  ├─ analysis2/               # 분석 2 코드
-│  │  ├─ __init__.py
-│  │  ├─ advanced.py
-│  │  ├─ eda.py
-│  │  ├─ evaluate.py
-│  │  └─ train.py
-│  │
-│  ├─ analysis3/               # 분석 3 코드
-│  │  ├─ __init__.py
-│  │  ├─ advanced.py
-│  │  ├─ eda.py
-│  │  ├─ evaluate.py
-│  │  └─ train.py
-│  │
-│  ├─ analysis4/               # 분석 4 코드
-│  │  ├─ __init__.py
-│  │  ├─ advanced.py
-│  │  ├─ eda.py
-│  │  ├─ evaluate.py
-│  │  └─ train.py
-│  │
-│  ├─ common/                  # 팀원 공통 코드
-│  │  ├─ __init__.py
-│  │  └─ common.py             # 데이터 불러오기
-│  │
-│  ├─ prediction/              # 모델 추론 관련 코드
-│  │  └─ __init__.py
-│  │
-│  └─ __init__.py              # src 패키지 초기화
-│
-├─ .gitignore                  
-├─ app.py                      # Streamlit 메인 실행 파일
-├─ README.md                   
-└─ requirements.txt            
+├─ app.py                   # Streamlit 실행 및 페이지 구성
+├─ README.md                # 프로젝트 소개 및 문서
+├─ requirements.txt         # 프로젝트 의존성 패키지
+└─ .gitignore               # Git 관리 제외 파일 설정
+```
+
+## 6. ▶️ 실행 방법
+
+### 1. 권장 (uv + pyproject.toml)
+```bash
+# uv 설치 (최초 1회)
+pip install uv
+
+# 의존성 설치 및 가상환경 생성
+uv sync
+
+# Streamlit 실행
+uv run streamlit run app.py
+```
+
+### 2. uv + requirements.txt
+```bash
+# uv 설치 (최초 1회)
+pip install uv
+
+# 가상환경 생성
+uv venv
+
+# 의존성 설치
+uv pip install -r requirements.txt
+
+# Streamlit 실행
+uv run streamlit run app.py
+```
+
+### 3. Python venv + requirements.txt
+```bash
+# 가상환경 생성
+python -m venv .venv
+
+# 가상환경 활성화
+.venv\Scripts\activate      # Windows
+source .venv/bin/activate   # macOS / Linux
+
+# 의존성 설치
+pip install -r requirements.txt
+
+# Streamlit 실행
+streamlit run app.py
 ```
