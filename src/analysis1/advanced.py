@@ -5,9 +5,25 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import RobustScaler, StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
+
+# 기준 모델 Pipeline
+def preprocess_pipeline(n_cluster, seed=SEED):
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("kmeans", KMeans(n_clusters=n_cluster, random_state=seed, n_init=10))
+    ])
+
+    return pipeline
+
+# 기준 모델 학습
+def train_baseline_model(X_train, n_cluster=4, seed=SEED):
+    pipeline = preprocess_pipeline(n_cluster, seed)
+    pipeline.fit(X_train)
+
+    return pipeline
 
 # 고도화 Pipeline
 def preprocess_pipeline_upgrade(n_cluster, seed=SEED):

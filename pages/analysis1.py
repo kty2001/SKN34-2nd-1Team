@@ -20,6 +20,7 @@ from src.analysis1 import (
     evaluate_cluster_churn,
     plot_cluster_churn,
     plot_cluster_pca,
+    train_baseline_model,
     train_upgrade_model,
     evaluate_upgrade,
     compare_before_after,
@@ -184,16 +185,18 @@ if df is not None:
         st.write("StandardScaler 기반 K-Means와 RobustScaler 기반 K-Means의 군집 품질을 비교합니다.")
 
         # 고도화 모델 학습 및 평가
+        baseline_pipeline = train_baseline_model(X_train, n_cluster=4, seed=42)
+        baseline_result = validate_model(baseline_pipeline, X_train, X_test)
         upgrade_pipeline = train_upgrade_model(X_train, n_cluster=3, seed=42)
         upgrade_result = evaluate_upgrade(upgrade_pipeline, X_train, X_test)
 
         # 비교 결과 데이터프레임
-        comparison = compare_before_after(validation_result, upgrade_result)
+        comparison = compare_before_after(baseline_result, upgrade_result)
 
         # Score 메트릭
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("기존 Test Score", f"{validation_result['test_score']:.4f}")
+            st.metric("기준 모델 Test Score", f"{baseline_result['test_score']:.4f}")
         with col2:
             st.metric("고도화 Test Score", f"{upgrade_result['test_score']:.4f}")
             

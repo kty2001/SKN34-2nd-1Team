@@ -29,6 +29,7 @@ from .evaluate import (
 )
 
 from .advanced import (
+    train_baseline_model,
     train_upgrade_model,
     evaluate_upgrade,
     compare_before_after,
