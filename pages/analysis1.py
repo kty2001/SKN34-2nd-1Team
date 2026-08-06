@@ -109,17 +109,16 @@ if df is not None:
     with tab2:
         # st.header("학습 / 추론 및 평가")
 
-        # 모델 불러오기 및 데이터 분리
-        pipeline = load_model()
+        # 모델 학습 및 데이터 분리
         X = cluster_df[cluster_features]
         y = cluster_df[target]
 
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y
         )
-        
-        # 검증 진행
-        validation_result = validate_model(pipeline, X_train, X_test)
+
+        baseline_pipeline = train_baseline_model(X_train, n_cluster=4, seed=42)
+        validation_result = validate_model(baseline_pipeline, X_train, X_test)
 
         # Score 메트릭
         col1, col2 = st.columns(2)
@@ -175,7 +174,7 @@ if df is not None:
         # PCA 군집 분포
         st.markdown("---")
         st.subheader("PCA 군집 분포")
-        st.pyplot(plot_cluster_pca(pipeline, X_train, validation_result["train_cluster"]))
+        st.pyplot(plot_cluster_pca(baseline_pipeline, X_train, validation_result["train_cluster"]))
         st.markdown("### 📌 분석 요약")
         st.write("PCA 공간에서도 군집이 일부 구분되지만, 경계가 완전히 선명하지 않아 모델 개선 여지가 남아 있습니다.")
 
