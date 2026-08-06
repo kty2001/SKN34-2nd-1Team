@@ -16,7 +16,7 @@
 13. [💬 한줄 회고](#13--한줄-회고-)
 
 ## 1. 🤝 팀 소개 <a href="#-목차"><sub>🔝</sub></a>
- ### ✨ 팀 명: ???
+### ✨ 팀 명: 개미짐옥
 
 | 이름 | 담당 |
 |---|---|
@@ -162,10 +162,29 @@ streamlit run app.py
 ## 7. 📊 데이터 전처리 결과 <a href="#-목차"><sub>🔝</sub></a>
 ### 공통 데이터 정보
 * 데이터 출처 : https://www.kaggle.com/datasets/adrianvinueza/gym-customers-features-and-churn/data
+* 컬럼 정보
+
+| 컬럼명 | 설명 |
+|---|---|
+| `gender` | 고객의 성별 |
+| `Near_Location` | 헬스장 근처 거주 여부 |
+| `Partner` | 제휴 파트너를 통한 가입 여부 |
+| `Promo_friends` | 친구 추천 프로모션을 통한 가입 여부 |
+| `Phone` | 전화번호 제공 여부 |
+| `Contract_period` | 고객의 계약 기간 |
+| `Group_visits` | 그룹 운동 참여 여부 |
+| `Age` | 고객의 나이 |
+| `Avg_additional_charges_total` | 추가 서비스 이용에 따른 평균 추가 지출 금액 |
+| `Month_to_end_contract` | 계약 종료까지 남은 기간(개월) |
+| `Lifetime` | 헬스장 이용 기간(개월) |
+| `Avg_class_frequency_total` | 전체 이용 기간 동안의 평균 월 방문 빈도 |
+| `Avg_class_frequency_current_month` | 최근 월의 평균 방문 빈도 |
+| `Churn` | 고객 이탈 여부 (`0`: 유지, `1`: 이탈) |
 * `gym_churn_us.csv` **4,000명 × 14개 변수** 사용
 * 결측치 및 중복 데이터 **없음**
 * 전체 이탈률 **26.5%**
 * 모든 데이터가 수치형으로 구성되어 **별도 인코딩 불필요**
+
 
 ---
 
@@ -232,34 +251,23 @@ streamlit run app.py
 ## 분석 2
 ### 기본 모델
 
-**Decision Tree / Random Forest**
+<!-- ![Random Forest Feature Importance](reports/images/analysis2/06_rf_importance_advanced.png) -->
+<img src="reports/images/analysis2/05_dt_importance_advanced.png" width="350">
+<img src="reports/images/analysis2/06_rf_importance_advanced.png" width="350">
 
-| 모델 | Accuracy | Recall | F1 | ROC-AUC |
-|---|---:|---:|---:|---:|
-| Decision Tree | 0.9062 | 0.8066 | 0.8201 | 0.8744 |
-| Random Forest | **0.9275** | **0.8349** | **0.8592** | **0.9676** |
 
-![Random Forest Feature Importance](reports/images/analysis2/06_rf_importance_advanced.png)
-
-### 모델 고도화
-
-* `GridSearchCV`를 활용하여 **Recall 기준 하이퍼파라미터 튜닝**
-* Decision Tree 고도화 후 ROC-AUC: **0.9381**
-* Random Forest 고도화 후 ROC-AUC: **0.9694**
-* 두 모델 모두 **Lifetime(가입기간)**이 가장 중요한 변수로 확인
+* 두 모델 모두 **Lifetime**(가입기간)이 가장 중요한 변수로 확인
 * 가입기간이 짧고 최근 수업 참여빈도가 낮을수록 **이탈 위험이 높게 나타남**
 
 ---
 
 ## 분석 3
-* Logistic Regression, Random Forest, Gradient Boosting 등을 비교
-* XGBoost 추가 및 하이퍼파라미터 튜닝을 진행
+* radient Boosting 모델의 피처 중요도를 확인한 결과, 계약·이용 기간과 관련된 변수
 
-![모델별 성능 비교](reports/images/analysis3/05_result_by_each_models.png)
+<img src="reports/images/analysis3/07_feature_importance.png" width="600">
 
-* 최종 XGBoost 성능: **Accuracy 0.9450 / Recall 0.8774 / F1 0.8942 / ROC-AUC 0.9804**
-* **계약 기간, 이용 기간, 계약 잔여 기간**이 주요 이탈 예측 변수로 확인
-* 장기 계약 전환과 방문 빈도 증가가 **주요 리텐션 전략**으로 확인
+* (`Lifetime`, `Contract_period`, `Month_to_end_contract`)와 방문 빈도 관련 변수
+&nbsp;(`Avg_class_frequency_current_month`)가 이탈 예측에 가장 크게 기여하는 것으로 나타남
 
 <!-- ![이탈 방지 시뮬레이션](reports/images/analysis3/13_churn_rate_pred_after_action.png) -->
 
@@ -314,13 +322,12 @@ XGBoost, Random Forest, Logistic Regression, MLP를 비교하여 **XGBoost를 �
 | :--- | :--- | :---: | :---: | :---: | :---: |
 | **Decision Tree** | 고도화 전 | 0.9062 | 0.8066 | 0.8201 | 0.8744 |
 | **Decision Tree** | 고도화 후 | **0.9112** | **0.8160** | **0.8297** | **0.9381** |
-| **Random Forest** | 고도화 전 | **0.9275** | **0.8349** | **0.8592** | 0.9676 |
-| **Random Forest** | 고도화 후 | 0.9250 | 0.8208 | 0.8529 | **0.9694** |
+| **Random Forest** | 고도화 전 | 0.9275 | 0.8349 | 0.8592 | 0.9676 |
+| **Random Forest** | 고도화 후 | **0.9250** | **0.8208** | **0.8529** | **0.9694** |
 
 * **최종 채택 모델:** `Random Forest (Advanced)`
 * **하이퍼파라미터:** `max_depth=10`, `max_features='sqrt'`, `n_estimators=300`
 * **Test 성능:** Accuracy 0.9250 / Recall 0.8208 / F1 0.8529 / ROC-AUC 0.9694
-* **핵심 결과:** `Lifetime`(가입 기간)이 가장 중요한 이탈 예측 변수 1위로 확인되었으며, 최근 수업 참여 빈도가 낮고 가입 기간이 짧은 회원일수록 이탈 위험이 높음.
 
 ---
 
@@ -330,7 +337,6 @@ XGBoost, Random Forest, Logistic Regression, MLP를 비교하여 **XGBoost를 �
 * **테스트 성능:** Accuracy 0.9450 / Recall 0.8774 / **F1 0.8942** / **ROC-AUC 0.9804**
 * **주요 기능 및 활용:**
   * 회원 데이터를 입력받아 이탈 가능성을 예측하고 고위험 회원을 선별하는 데 활용.
-  * Feature Importance 분석 결과 계약 기간, 이용 기간, 계약 잔여 기간이 주요 변수로 작용.
   * 함께 진행된 K-Means 군집 분석은 예측 모델의 성능 향상보다는 회원 세그먼트별 맞춤형 이탈 방지 전략(장기 계약 전환 및 방문 빈도 증가) 수립에 활용.
 
 ---
@@ -379,7 +385,7 @@ XGBoost, Random Forest, Logistic Regression, MLP를 비교하여 **XGBoost를 �
 방문 감소 관리: 알림·쿠폰·상담·이벤트를 통한 재방문 유도  
 장기 계약 유도: 단기 계약 회원에게 장기 계약 할인 및 혜택 제공  
 그룹수업 활성화: 미참여 회원 대상 무료 체험 및 참여 혜택 제공  
-사회초년생 맞춤 계약: 사회초년생의 불안정한 생활 패턴을 고려해 유연한 단기 계약·회원권 일시정지 제도를 제공한다.
+사회초년생 맞춤 계약: 사회초년생의 불안정한 생활 패턴을 고려해 유연한 단기 계약·회원권 일시정지 제도를 제공한다.  
 복귀 회원 혜택: 일정 기간 이용하지 않은 기존 회원의 재방문을 유도하기 위한 혜택 제공
 
 ## 11. 💻 서비스 주요 기능 <a href="#-목차"><sub>🔝</sub></a>
@@ -418,11 +424,7 @@ XGBoost, Random Forest, Logistic Regression, MLP를 비교하여 **XGBoost를 �
 
 ## 13. 💬 한줄 회고 <a href="#-목차"><sub>🔝</sub></a>
 ### 이현준
-어떨결에 팀장을 하게 됐다. 현업에 있을때 팀장님 밑에서 일만 해봤지 직접 해본 적이 없어서
-어떻게 해야 할지 고민이 많았지만 그래도 나름 최선을 다해서 팀을 이끌도록 노력했다.
-그리고 경력자로써 프로젝트 경험은 많지만 전부 기능개발, 서비스 제공 프로젝트들이 였고
-개발 기간도 긴 프로젝트들만 했었다 보니 이런 분석 관련 과 짧은 기간에 해야하는
-상황에서는 경험이 없어 프로젝트 규모를 작게해서 진행했다. 그래서 팀원들 만족도를 충족 시키지 못한 아쉬운이 있다. 
+처음 팀장을 맡았고 큰 규모의 프로젝트에 익숙하다 보니 작은 규모의 프로젝트에 대해서 진행하는데 쉽지가 않았다. 팀원들의 만족도을 충족 시키지 못해 아쉬움이 있다.
 
 ### 정예린
 각자의 역할분담이 잘 나눠져 큰 문제 없이 프로젝트를 수행했지만, 아이디어를 좀 더 구체화했다면 다양하고 좋은 결과가 나왔을 것 같다.
